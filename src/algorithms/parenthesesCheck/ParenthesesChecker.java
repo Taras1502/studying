@@ -1,7 +1,7 @@
 package algorithms.parenthesesCheck;
 
-import futureTest.algorithms.dataStructures.stack.CustomArrayStack;
-import futureTest.algorithms.dataStructures.stack.Stack;
+import algorithms.dataStructures.stack.CustomArrayStack;
+import algorithms.dataStructures.stack.Stack;
 
 /**
  * Created by Taras.Mykulyn on 07.10.2015.

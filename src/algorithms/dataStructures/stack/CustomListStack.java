@@ -1,6 +1,6 @@
 package algorithms.dataStructures.stack;
 
-import futureTest.algorithms.dataStructures.linkedList.CustomLinkedList;
+import algorithms.dataStructures.linkedList.CustomLinkedList;
 
 import java.util.Iterator;
 

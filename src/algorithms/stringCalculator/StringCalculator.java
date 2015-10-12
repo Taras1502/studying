@@ -1,6 +1,6 @@
 package algorithms.stringCalculator;
 
-import futureTest.algorithms.dataStructures.stack.CustomArrayStack;
+import algorithms.dataStructures.stack.CustomArrayStack;
 
 /**
  * Created by Taras.Mykulyn on 05.10.2015.

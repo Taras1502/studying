@@ -1,8 +1,9 @@
 package algorithms.dataStructures.test;
 
-import futureTest.algorithms.dataStructures.linkedList.CustomLinkedList;
+
+import algorithms.dataStructures.linkedList.CustomLinkedList;
+import org.junit.Assert;
 import org.junit.Test;
-import org.testng.Assert;
 
 /**
  * Created by Taras.Mykulyn on 07.10.2015.
