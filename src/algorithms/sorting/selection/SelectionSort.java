@@ -8,23 +8,17 @@ import algorithms.sorting.SortingAlgorithm;
 public class SelectionSort<T> implements SortingAlgorithm<T> {
     @Override
     public void sort(Comparable<T>[] array) {
-
-    }
-
-    @Override
-    public void sort(int[] array) {
         int minInd;
         for (int i = 0; i < array.length; i++) {
             minInd = i;
             for (int j = i; j < array.length; j++) {
-                if (array[j] < array[minInd]) {
+                if (array[j].compareTo((T) array[minInd]) < 0) {
                     minInd = j;
                 }
             }
-            int t = array[i];
+            Comparable<T> t = array[i];
             array[i] = array[minInd];
             array[minInd] = t;
         }
     }
-
 }

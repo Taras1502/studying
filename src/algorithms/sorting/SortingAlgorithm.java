@@ -6,5 +6,4 @@ package algorithms.sorting;
  */
 public interface SortingAlgorithm<T> {
     void sort(Comparable<T>[] array);
-    void sort(int[] array);
 }

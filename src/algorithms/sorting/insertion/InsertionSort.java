@@ -9,16 +9,11 @@ public class InsertionSort<T> implements SortingAlgorithm<T> {
 
     @Override
     public void sort(Comparable<T>[] array) {
-
-    }
-
-    @Override
-    public void sort(int[] array) {
         int n = array.length;
         for (int i = 1; i < n; i++) {
             for (int j = i; j > 0; j--) {
-                if (array[j] < array[j - 1]) {
-                    int t = array[j - 1];
+                if (array[j].compareTo((T) array[j - 1]) < 0) {
+                    Comparable<T> t = array[j - 1];
                     array[j - 1] = array[j];
                     array[j] = t;
                 } else {
