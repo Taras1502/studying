@@ -4,6 +4,7 @@ import algorithms.sorting.insertion.InsertionSort;
 import algorithms.sorting.insertion.OptimizedInsertionSort;
 import algorithms.sorting.merge.DownMergeSort;
 import algorithms.sorting.merge.UpMergeSort;
+import algorithms.sorting.quick.QuickSort;
 import algorithms.sorting.selection.SelectionSort;
 import algorithms.sorting.shell.ShellSort;
 import java.util.Arrays;
@@ -38,6 +39,7 @@ public class SortClient {
         Integer[] array4 = new Integer[100000];
         Integer[] array5 = new Integer[100000];
         Integer[] array6 = new Integer[100000];
+        Integer[] array7 = new Integer[100000];
         for (int i = 0 ; i < array1.length; i++) {
             array1[i] =
             array2[i] =
@@ -45,6 +47,7 @@ public class SortClient {
             array4[i] =
             array5[i] =
             array6[i] =
+            array7[i] =
             rand.nextInt();
         }
 
@@ -67,6 +70,9 @@ public class SortClient {
 
         sort(new DownMergeSort<>(), array6);
         long point7 = System.currentTimeMillis();
+
+        sort(new QuickSort<>(), array7);
+        long point8 = System.currentTimeMillis();
 
         System.out.println("\nSHELL SORT");
         System.out.println("sorted: " + isSorted(array1));
@@ -91,5 +97,9 @@ public class SortClient {
         System.out.println("\nDOWN MERGE SORT");
         System.out.println("sorted: " + isSorted(array4));
         System.out.println("time: " + (point7 - point6));
+
+        System.out.println("\nQUICK SORT");
+        System.out.println("sorted: " + isSorted(array7));
+        System.out.println("time: " + (point8 - point7));
     }
 }

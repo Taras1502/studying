@@ -1,10 +1,6 @@
 package algorithms.sorting.merge;
 
-import algorithms.sorting.SortClient;
 import algorithms.sorting.SortingAlgorithm;
-
-import java.util.Arrays;
-import java.util.Random;
 
 /**
  * Created by macbookpro on 10/19/15.
