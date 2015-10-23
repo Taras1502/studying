@@ -26,6 +26,11 @@ public class CustomListQueue<T> implements Queue<T>, Iterable<T> {
     }
 
     @Override
+    public T get() {
+        return queue.getFirst();
+    }
+
+    @Override
     public int size() {
         return queue.size();
     }

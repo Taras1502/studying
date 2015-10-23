@@ -6,5 +6,6 @@ package algorithms.dataStructures.queue;
 public interface Queue<T> {
     void enqueue(T element);
     T dequeue();
+    T get();
     int size();
 }
