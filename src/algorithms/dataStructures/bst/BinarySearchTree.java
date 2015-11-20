@@ -13,7 +13,7 @@ public class BinarySearchTree<T extends Comparable> {
 
     public void add(T elem) {
         root = add(root, elem);
-        System.out.println("Adding...");
+        System.out.println("Adding element: " + elem);
     }
 
     private Node add(Node node, T elem) {
@@ -44,73 +44,66 @@ public class BinarySearchTree<T extends Comparable> {
         }
     }
 
-    private Node getParent(Node node, T elem) {
-        if (node != null) {
-            if (elem.compareTo(node.value) == 0) {
-                return null;
-            } else if (elem.compareTo(node.value) < 0) {
-                return getParent(node.left, node, elem);
-            } else {
-                return getParent(node.right, node, elem);
-            }
-        } else {
-            return null;
+    public void removeMinNode() {
+        if (root != null) {
+            Node minNode = new Node(root.value);
+            root = removeMinNode(root, minNode);
+            size--;
         }
     }
 
-    private Node getParent(Node current, Node parent, T elem) {
-        if (current != null) {
-            if (elem.compareTo(current.value) == 0) {
-                return parent;
-            } else if (elem.compareTo(current.value) < 0) {
-                return getParent(current.left, current, elem);
-            } else {
-                return getParent(current.right, current, elem);
-            }
-        } else {
-            return null;
-        }
-    }
-
-    private Node removeMinNode(Node node) {
+    private Node removeMinNode(Node node, Node minNode) {
         if (node.left != null) {
-            node.left = removeMinNode(node.left);
-        } else if (node.right != null) {
-            Node minNode = node.right;
-            node.left = node.right;
-            return minNode;
+            Node leftNode = node;
+            minNode.value = node.left.value;
+            node.left = removeMinNode(node.left, minNode);
+            return leftNode;
         } else {
-            return null;
+            return node.right;
+        }
+    }
+
+    public void removeMaxNode() {
+        if (root != null) {
+            root = removeMaxNode(root);
+            size--;
+        }
+    }
+
+    private Node removeMaxNode(Node node) {
+        if (node.right != null) {
+            node.right = removeMaxNode(node.right);
+            return node;
+        } else {
+            return node.left;
+        }
+    }
+
+    public void delete(T element) {
+        root = delete(root, element);
+    }
+
+    private Node delete(Node node, T elem) {
+        if (node.value.compareTo(elem) > 0) {
+            node.left = delete(node.left, elem);
+        } else if (node.value.compareTo(elem) < 0) {
+            node.right = delete(node.right, elem);
+        } else {
+            size--;
+            if (node.left != null && node.right != null) {
+                Node minNode = new Node(node.right.value);
+                node.right = removeMinNode(node.right, minNode);
+                node.value = minNode.value;
+            } else if (node.left != null) {
+                return node.left;
+            } else if (node.right != null) {
+                return node.right;
+            } else {
+                return null;
+            }
         }
         return node;
     }
-
-    public void remove(T elem) {
-        if (root == null) return;
-        Node parent = getParent(root, elem);
-        if (parent != null) {
-            if (parent.value.compareTo(elem) < 0) {
-                parent.right = resetNode(parent.right);
-            } else {
-                parent.left = resetNode(parent.left);
-            }
-        } else if (root.value.compareTo(elem) == 0) {
-            root = resetNode(root);
-        }
-    }
-
-    private Node resetNode(Node node) {
-        if (node.left == null && node.right == null) {
-            return null;
-        } else if (node.left != null && node.right == null) {
-            return node.left;
-        } else if (node.left == null && node.right != null) {
-            return node.right;
-        } else {
-            return removeMinNode(node.right);
-        }
-    }
-
 
     public boolean contains(T elem) {
         return getNode(root, elem) != null;
@@ -132,6 +125,24 @@ public class BinarySearchTree<T extends Comparable> {
         }
     }
 
+    public void inOrder() {
+        System.out.println("Size: " + size);
+        inOrder(root);
+    }
+
+    private void inOrder(Node node) {
+        if (node == null) {
+            System.out.println("No items");
+            return;
+        }
+        if (node.left != null) {
+            inOrder(node.left);
+        }
+        System.out.print(node.value + " ");
+        if (node.right != null) {
+            inOrder(node.right);
+        }
+    }
 
     class Node {
         T value;
@@ -145,38 +156,43 @@ public class BinarySearchTree<T extends Comparable> {
         }
     }
 
-    private void print() {
-    }
-
     public static void main(String[] args) {
         BinarySearchTree<Integer> bst = new BinarySearchTree<>();
-        bst.add(2);
-        bst.add(5);
-        bst.add(5);
-        bst.add(4);
+        for (int i = 0; i < 10000; i++) {
+            bst.add(i);
+        }
+        System.out.println(bst.contains(555));
+        bst.delete(555);
+        System.out.println(bst.contains(555));
+//        bst.inOrder();
 
-        System.out.println(bst.contains(2));
-        System.out.println(bst.contains(5));
-        System.out.println(bst.contains(4));
-        System.out.println();
 
-        bst.remove(5);
-        System.out.println(bst.contains(2));
-        System.out.println(bst.contains(5));
-        System.out.println(bst.contains(4));
-        System.out.println();
-
-        bst.remove(4);
-        System.out.println(bst.contains(2));
-        System.out.println(bst.contains(5));
-        System.out.println(bst.contains(4));
-        System.out.println();
-
-        bst.remove(2);
-        System.out.println(bst.contains(2));
-        System.out.println(bst.contains(5));
-        System.out.println(bst.contains(4));
-
-        bst.remove(2);
+//        bst.delete(2);
+//        System.out.println(bst.contains(2));
+//        System.out.println(bst.contains(5));
+//        System.out.println(bst.contains(4));
+//        System.out.println(bst.contains(6));
+//        System.out.println();
+//
+//        bst.delete(5);
+//        System.out.println(bst.contains(2));
+//        System.out.println(bst.contains(5));
+//        System.out.println(bst.contains(4));
+//        System.out.println(bst.contains(6));
+//        System.out.println();
+//
+//        bst.delete(4);
+//        System.out.println(bst.contains(2));
+//        System.out.println(bst.contains(5));
+//        System.out.println(bst.contains(4));
+//        System.out.println(bst.contains(6));
+//        System.out.println();
+//
+//        bst.delete(6);
+//        System.out.println(bst.contains(2));
+//        System.out.println(bst.contains(5));
+//        System.out.println(bst.contains(4));
+//        System.out.println(bst.contains(6));
+//        System.out.println();
     }
 }
