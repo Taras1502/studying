@@ -94,11 +94,11 @@ public class LambdaBasics<T> {
         Stream<Long> stream = Stream.generate(System::currentTimeMillis).
                 limit(10).
                 distinct().
-                sorted(Comparator.comparing(String::valueOf, (first, second) -> {
-                    return first.compareTo(second);
-                }).
+                sorted(Comparator.comparing(String::valueOf, (first, second) ->
+                        first.compareTo(second)).
                         reversed()).
                 peek(System.out::println);
+        stream.filter((Long elem) -> elem > 0);
         Optional<Long> optional = stream.max(Comparator.comparing(String::valueOf, (x, y) -> x.compareTo(y)));
 
 

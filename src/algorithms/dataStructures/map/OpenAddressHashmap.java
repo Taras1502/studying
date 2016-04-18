@@ -7,7 +7,7 @@ import java.util.Random;
  */
 
 @SuppressWarnings("unchecked")
-public class OpenAddressHashMap<K extends Comparable, V extends Comparable> implements Map<K, V> {
+class OpenAddressHashMap<K extends Comparable, V extends Comparable> implements Map<K, V> {
     private static final int DEFAULT_MIN_CAPACITY = 12;
     private static final double DEFAULT_LOAD_FACTOR = 0.75;
 
