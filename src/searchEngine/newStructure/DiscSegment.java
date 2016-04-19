@@ -1,23 +1,19 @@
-package searchEngine;
+package searchEngine.newStructure;
 
-
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.io.Serializable;
-import java.util.Set;
 
 /**
- * Created by Taras.Mykulyn on 13.04.2016.
+ * Created by macbookpro on 4/19/16.
  */
-public class ReadablePartition implements Serializable {
+public class DiscSegment {
     private int id;
     private String path;
     private RandomAccessFile index;
 
-    public ReadablePartition(String path, int id) {
-        this.path = path;
+    public DiscSegment(int id, String path) {
         this.id = id;
+        this.path = path;
     }
 
     public int getId() {
@@ -28,7 +24,7 @@ public class ReadablePartition implements Serializable {
         try {
             index = new RandomAccessFile(path, "rw");
             index.seek(pos);
-            short sizeToRead = index.readShort();
+            int sizeToRead = index.readInt();
             System.out.println("sizetoread" + sizeToRead);
             byte[] postList = new byte[sizeToRead];
             index.read(postList);
@@ -38,6 +34,4 @@ public class ReadablePartition implements Serializable {
         }
         return null;
     }
-
-
 }

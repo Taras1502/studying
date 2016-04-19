@@ -1,10 +1,6 @@
 package searchEngine;
 
 import javafx.collections.transformation.SortedList;
-import nsx.api.pojo.serviceComposer.securityPolicy.Runtime;
-import org.openqa.jetty.http.HashUserRealm;
-import org.openqa.jetty.http.InclusiveByteRange;
-
 import java.io.*;
 import java.lang.reflect.MalformedParameterizedTypeException;
 import java.nio.CharBuffer;
@@ -15,7 +11,8 @@ import java.util.*;
  */
 public class Test {
 
-    private static final String INDEXES_DIR = "C:\\ind\\";
+    private static final String INDEXES_DIR = "/Users/macbookpro/Desktop/ind/";
+    private static final String SOURCE_DIR = "/Users/macbookpro/Desktop/test/";
     private static final String INDEXES_PART_EXT = ".indpart";
     private static TreeSet<String> STOP_WORDS;
 
@@ -27,28 +24,29 @@ public class Test {
         ));
 
         Map<String, List<String>> dictionary = new HashMap<>();
-
-        File dir = new File("C:\\test");
-        File[] files = dir.listFiles();
-        int counter = 0;
-        long start = System.currentTimeMillis();
-        for (File f: files) {
-            create(f.getPath(), counter++, dictionary);
-        }
-        long p1 = System.currentTimeMillis();
-        System.out.println(p1 - start);
-
-        File partionsF = new File(INDEXES_DIR + "partitions");
-        ObjectOutputStream poos = new ObjectOutputStream(new FileOutputStream(partionsF));
-        poos.writeObject(partitions);
-        poos.close();
-
-        File indPartFileO = new File(INDEXES_DIR + "dictionary.dic");
-        ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(indPartFileO));
-        oos.writeObject(dictionary);
-        oos.close();
+//
+//        File dir = new File(SOURCE_DIR);
+//        File[] files = dir.listFiles();
+//        int counter = 0;
+//        long start = System.currentTimeMillis();
+//        for (File f: files) {
+//            System.out.println("Indexing " + f.getPath());
+//            create(f.getPath(), counter++, dictionary);
+//        }
+//        long p1 = System.currentTimeMillis();
+//        System.out.println("index time " + (p1 - start));
+//
+//        File partionsF = new File(INDEXES_DIR + "partitions");
+//        ObjectOutputStream poos = new ObjectOutputStream(new FileOutputStream(partionsF));
+//        poos.writeObject(partitions);
+//        poos.close();
+//
+//        File indPartFileO = new File(INDEXES_DIR + "dictionary.dic");
+//        ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(indPartFileO));
+//        oos.writeObject(dictionary);
+//        oos.close();
         long p2 = System.currentTimeMillis();
-        System.out.println(p2 - p1);
+//        System.out.println("writing dictionary to disc " + (p2 - p1));
 
         ObjectInputStream pois = new ObjectInputStream(new FileInputStream(INDEXES_DIR + "partitions"));
         partitions = (HashMap<Integer, ReadablePartition>) pois.readObject();
@@ -56,18 +54,31 @@ public class Test {
         ObjectInputStream ois = new ObjectInputStream(new FileInputStream(INDEXES_DIR + "dictionary.dic"));
         Map<String, List<String>> m = (Map<String, List<String>>) ois.readObject();
         long p3 = System.currentTimeMillis();
-        System.out.println(p3 - p2);
-        System.out.println(m.size());
+        System.out.println("reading dictionary from disc " + (p3 - p2));
+        System.out.println("size of the dictionsry " + m.size());
 
-        String find = "fabulous";
-        List<String> res = m.get(find);
-        for (String p: res) {
-            String[] elem = p.split(" ");
-            System.out.println(partitions.get(Integer.valueOf(elem[0])).getPostList(Integer.valueOf(elem[1])).toString());
+
+        Scanner s = new Scanner(System.in);
+        while (s.hasNext()) {
+            long p31 = System.currentTimeMillis();
+
+            String find = s.next();
+            if (find.equals("exit")) {
+                break;
+            }
+            List<String> res = m.get(find);
+            if (res == null || res.isEmpty()) {
+                System.out.println("not found");
+            } else {
+                for (String p : res) {
+                    String[] elem = p.split(" ");
+                    System.out.println(partitions.get(Integer.valueOf(elem[0])).getPostList(Integer.valueOf(elem[1])).toString());
+                }
+            }
+            long p4 = System.currentTimeMillis();
+            System.out.println("time for search " + (p4 - p31));
+
         }
-        long p4 = System.currentTimeMillis();
-        System.out.println(p4 - p3);
-
 //        String find1 = "taras";
 //        List<String> res1 = m.get(find1);
 //        for (String p: res1) {

@@ -1,13 +1,13 @@
-package searchEngine;
-
+package searchEngine.newStructure;
 
 import java.nio.ByteBuffer;
 import java.util.*;
 
 /**
- * Created by Taras.Mykulyn on 13.04.2016.
+ * Created by macbookpro on 4/19/16.
  */
 public class PostList {
+
     private int size;
     private Map<Integer, List<Integer>> posts;
     public PostList() {

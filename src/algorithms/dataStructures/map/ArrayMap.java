@@ -218,7 +218,7 @@ public class ArrayMap<K extends Comparable, V> implements Map<K, V> {
         System.out.println(Arrays.toString(values));
     }
 
-    private static class DefaultComparator<T extends Comparable> implements Comparator<T> {
+    public class DefaultComparator<T extends Comparable> implements Comparator<T> {
         @Override
         public int compare(T o1, T o2) {
             if (o1 == null || o2 == null ||
