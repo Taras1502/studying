@@ -21,6 +21,9 @@ public class InMemorySegment {
     private long size;
     private Map<String, PostList> segmentDictionary;
 
+    private boolean committed;
+    private boolean searchable;
+
     public InMemorySegment(int id) {
         this.id = id;
         size = 0;
@@ -33,6 +36,22 @@ public class InMemorySegment {
 
     public int getId() {
         return id;
+    }
+
+    public boolean isCommitted() {
+        return committed;
+    }
+
+    public void setCommitted(boolean committed) {
+        this.committed = committed;
+    }
+
+    public boolean isSearchable() {
+        return searchable;
+    }
+
+    public void setSearchable(boolean searchable) {
+        this.searchable = searchable;
     }
 
     public void addPostList(String token, int docId, int pos) {

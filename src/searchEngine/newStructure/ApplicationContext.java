@@ -30,7 +30,7 @@ public class ApplicationContext {
         discSegments = new HashMap<>();
         inMemorySegment = new InMemorySegment(0);
         inMemoryDictionary = new HashMap<>();
-        documentStore = new DocumentStore(workingDir + "\\" + DOC_STORE_EXT);
+        documentStore = DocumentStore.load(workingDir + "\\" + DOC_STORE_EXT);
         try {
             if (!Files.exists(new File(workingDir).toPath())) {
                 Files.createDirectory(new File(workingDir).toPath());

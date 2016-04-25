@@ -6,10 +6,10 @@ package searchEngine.newStructure;
 public class SearchEngine {
 
     public static void main(String[] args) {
-        IndexManager i = new IndexManager(ApplicationContext.create("/Users/macbookpro/Desktop/workingDir"));
-        i.addFileToIndex("/Users/macbookpro/Desktop/test/big.txt");
-        i.addFileToIndex("/Users/macbookpro/Desktop/test/big_copy.txt");
-        i.addFileToIndex("/Users/macbookpro/Desktop/test/big_copy_2.txt");
+        IndexManager i = IndexManager.create("D:\\workingDir");
+        i.addFileToIndex("D:\\docs\\courierv34man.txt");
+        i.addFileToIndex("D:\\docs\\jargn10.txt");
+//        i.addFileToIndex("D:\\docs");
         i.search("good");
     }
 }
