@@ -41,5 +41,4 @@ public class Document {
     public void setUpdated(boolean updated) {
         this.updated = updated;
     }
-
 }
