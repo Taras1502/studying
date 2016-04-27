@@ -1,8 +1,5 @@
 package searchEngine.newStructure;
 
-import searchEngine.Partition;
-import searchEngine.ReadablePartition;
-
 import java.io.*;
 import java.nio.file.Files;
 import java.util.*;
@@ -33,8 +30,8 @@ public class IndexManager {
             return null;
         }
         indexManager.segmentManager = SegmentManager.create(workingDir);
-        indexManager.inMemoryDictionary = Dictionary.create(workingDir + "\\dictionary");
-        indexManager.documentStore = DocumentStore.create(workingDir + "\\docStore");
+        indexManager.inMemoryDictionary = Dictionary.create(workingDir + "/dictionary");
+        indexManager.documentStore = DocumentStore.create(workingDir + "/docStore");
         return indexManager;
     }
 
@@ -43,26 +40,15 @@ public class IndexManager {
         indexManager.workingDir = workingDir;
 
         indexManager.segmentManager = SegmentManager.load(workingDir);
-        indexManager.inMemoryDictionary = Dictionary.load(workingDir + "\\dictionary");
-        indexManager.documentStore = DocumentStore.load(workingDir + "\\docStore");
+        indexManager.inMemoryDictionary = Dictionary.load(workingDir + "/dictionary");
+        indexManager.documentStore = DocumentStore.load(workingDir + "/docStore");
         return indexManager;
     }
 
     public void addFileToIndex(String path) {
         File file = new File(path);
-        int docId = 0;//appContext.getDocumentStore().registerDocument(path);
-
-        InMemorySegment inMemorySegment = appContext.getInMemorySegment();
-        long freeSpace = appContext.getMaxInMemorySegmentSize() - inMemorySegment.getSize();
-        if (file.length() / 2 > freeSpace) {
-            int segId = inMemorySegment.getId();
-            DiscSegment discSegment = inMemorySegment.writeToDisk(appContext.getInMemoryDictionary(),
-                    appContext.formDiscSegmentPath(segId));
-            appContext.addNewDiscSegment(discSegment);
-            //creating new inMemory segment
-            inMemorySegment = new InMemorySegment(segId + 1);
-            appContext.setInMemorySegment(inMemorySegment);
-        }
+        InMemorySegment inMemorySegment = segmentManager.getInMemorySegment(file.length(), inMemoryDictionary);
+        int docId = documentStore.registerDocument(path, inMemorySegment.getId());
 
         BufferedReader br = null;
         try {
@@ -92,23 +78,20 @@ public class IndexManager {
     }
 
     public void search(String... text) {
-        System.out.println(appContext.getDocumentStore().toString());
+        System.out.println(documentStore.toString());
 
-        Map<String, List<String>> dictionary = appContext.getInMemoryDictionary();
-        Map<Integer, DiscSegment> discSegments = appContext.getDiscSegments();
-        InMemorySegment inMemorySegment = appContext.getInMemorySegment();
+        InMemorySegment inMemorySegment = segmentManager.getInMemorySegment();
         for (String token: text) {
             System.out.println("*** " + token + " ***");
             System.out.println("in memory:\n" + inMemorySegment.getPostList(token).toString());
-            List<String> res = dictionary.get(token);
+            Map<Integer, Integer> res = inMemoryDictionary.getTokenData(token);
             if (res == null || res.isEmpty()) {
                 System.out.println(token + " not found...");
             } else {
-                for (String p : res) {
-                    String[] elem = p.split(" ");
-                    if (elem.length > 0) {
-                        System.out.println("on disc:\n" + discSegments.get(Integer.valueOf(elem[0])).getPostList(Integer.valueOf(elem[1])).toString());
-                    }
+                for (Map.Entry<Integer, Integer> p : res.entrySet()) {
+                    System.out.println("PostList (seg = " + p.getKey() + ") " +
+                            segmentManager.getDiscSegment(p.getKey()).getPostList(p.getValue()).toString());
+
                 }
             }
         }

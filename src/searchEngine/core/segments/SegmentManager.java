@@ -1,4 +1,9 @@
-package searchEngine.newStructure;
+package searchEngine.core.segments;
+
+import searchEngine.interfaces.*;
+import searchEngine.newStructure.Dictionary;
+import searchEngine.newStructure.DiscSegment;
+import searchEngine.newStructure.InMemorySegment;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -14,7 +19,7 @@ public class SegmentManager {
     private static final String MEMORY_SEGMENTS_FILE_NAME = "segments.mem";
 
     private Map<Integer, DiscSegment> discSegments;
-    private InMemorySegment inMemorySegment;
+    private MemorySegment memorySegment;
     private String workingDir;
     private int maxDiscSegments = 10;
     private long maxInMemorySegSize = 10240000; // 10 mb
@@ -33,15 +38,35 @@ public class SegmentManager {
     public static SegmentManager create(String workingDir) {
         SegmentManager segmentManager = new SegmentManager(workingDir);
         segmentManager.discSegments = new HashMap<>();
-        segmentManager.inMemorySegment = new InMemorySegment(0);
+        segmentManager.memorySegment = new MemorySegment(0, workingDir);
         return segmentManager;
     }
+
+    public MemorySegment getMemorySegment(long spaceNeeded) {
+        if (maxInMemorySegSize - memorySegment.getSize() < spaceNeeded) {
+            String path = workingDir + "/" + memorySegment.getId() + ".disc";
+            DiscSegment discSegment = memorySegment.writeToDisc(dictionary);
+            discSegments.put(discSegment.getId(), discSegment);
+
+            if (discSegments.size() > maxDiscSegments) {
+                // TODO: merge two least relevant segments
+            }
+
+            memorySegment = new MemorySegment(discSegment.getId() + 1, path);
+        }
+        return memorySegment;
+    }
+
+    PostList retrievePostLists(int discSegId, long pos);
+
+    PostList retrievePostList(String token);
+
 
     private void loadDiscSegmentsData() {
         ObjectInputStream ois = null;
         try {
             ois = new ObjectInputStream(new FileInputStream(workingDir + "/" + DISC_SEGMENTS_FILE_NAME));
-            discSegments = (Map<Integer, DiscSegment>) ois.readObject();
+            discSegments = (Map<Integer, searchEngine.newStructure.DiscSegment>) ois.readObject();
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
         } finally {
@@ -58,7 +83,7 @@ public class SegmentManager {
         ObjectInputStream ois = null;
         try {
             ois = new ObjectInputStream(new FileInputStream(workingDir + "/" + MEMORY_SEGMENTS_FILE_NAME));
-            inMemorySegment = (InMemorySegment) ois.readObject();
+            memorySegment = (MemorySegment) ois.readObject();
         } catch (IOException | ClassNotFoundException e) {
             System.err.println("Failed to load in-memory segment.");
             e.printStackTrace();
@@ -71,27 +96,6 @@ public class SegmentManager {
         }
     }
 
-    public InMemorySegment getInMemorySegment(long fileSize, Dictionary dictionary) {
-        if (maxInMemorySegSize - inMemorySegment.getSize() < fileSize) {
-            String path = workingDir + "/" + inMemorySegment.getId() + ".disc";
-            DiscSegment discSegment = inMemorySegment.writeToDisk(dictionary, path);
-            discSegments.put(discSegment.getId(), discSegment);
 
-            if (discSegments.size() > maxDiscSegments) {
-                // TODO: merge two least relevant segments
-            }
-
-            inMemorySegment = new InMemorySegment(discSegment.getId() + 1);
-        }
-        return inMemorySegment;
-    }
-
-    public InMemorySegment getInMemorySegment() {
-        return inMemorySegment;
-    }
-
-    public DiscSegment getDiscSegment(int id) {
-        return discSegments.get(id);
-    }
 
 }

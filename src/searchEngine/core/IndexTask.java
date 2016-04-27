@@ -1,4 +1,4 @@
-package searchEngine.index;
+package searchEngine.core;
 
 import searchEngine.interfaces.MemorySegment;
 

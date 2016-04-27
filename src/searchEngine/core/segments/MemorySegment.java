@@ -1,49 +1,39 @@
-package searchEngine.newStructure;
+package searchEngine.core.segments;
 
-import searchEngine.ReadablePartition;
+import searchEngine.interfaces.*;
 
 import java.io.BufferedOutputStream;
 import java.io.DataOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
- * Created by macbookpro on 4/19/16.
+ * Created by macbookpro on 4/27/16.
  */
-public class InMemorySegment {
+public class MemorySegment {
     private static final int INT_SIZE = 4;
 
+    private String path;
     private int id;
     private long size;
     private Map<String, PostList> segmentDictionary;
 
     private boolean committed;
     private boolean searchable;
+    private boolean writable;
 
-    public InMemorySegment(int id) {
+    public MemorySegment(int id, String path) {
         this.id = id;
-        size = 0;
-        segmentDictionary = new HashMap<>();
-    }
-
-    public long getSize() {
-        return size;
+        this.path = path;
     }
 
     public int getId() {
         return id;
     }
 
-    public boolean isCommitted() {
-        return committed;
-    }
-
-    public void setCommitted(boolean committed) {
-        this.committed = committed;
+    public long getSize() {
+        return size;
     }
 
     public boolean isSearchable() {
@@ -54,10 +44,22 @@ public class InMemorySegment {
         this.searchable = searchable;
     }
 
+    public boolean isWritable() {
+        return writable;
+    }
+
+    public void setWritable(boolean writable) {
+        this.writable = writable;
+    }
+
+    public PostList getPostList(String token) {
+        return segmentDictionary.get(token);
+    }
+
     public void addPostList(String token, int docId, int pos) {
         PostList postList = segmentDictionary.get(token);
         if (postList == null) {
-            postList = new PostList();
+            postList = new PostListImpl();
             segmentDictionary.put(token, postList);
             size += INT_SIZE * 2; // int1 - docID, int2 - posNumber
         }
@@ -65,12 +67,7 @@ public class InMemorySegment {
         size += INT_SIZE; // pos
     }
 
-    public PostList getPostList(String token) {
-        return segmentDictionary.get(token);
-    }
-
-    public DiscSegment writeToDisk(Dictionary dictionary, String path) {
-        System.out.println("writing file to " + path);
+    public DiscSegment writeToDisc(Dictionary dictionary) {
         BufferedOutputStream indOS;
         DataOutputStream indDOS = null;
 
@@ -79,13 +76,13 @@ public class InMemorySegment {
             indOS = new BufferedOutputStream(new FileOutputStream(path));
             indDOS = new DataOutputStream(indOS);
 
-            for (Map.Entry<String, PostList> tokenData: segmentDictionary.entrySet()) {
-                byte[] postList = tokenData.getValue().toBytes();
+            for (Map.Entry<String, PostList> e: segmentDictionary.entrySet()) {
+                byte[] postList = e.getValue().toBytes();
 
                 indDOS.writeInt(postList.length); //size =
                 indDOS.write(postList);
 
-                dictionary.addToken(tokenData.getKey(), id, pos);
+                dictionary.addToken(e.getKey(), id, pos);
                 pos += postList.length + INT_SIZE;
             }
             return new DiscSegment(id, path);
@@ -99,6 +96,10 @@ public class InMemorySegment {
             }
         }
         return null;
+    }
 
+    public boolean commit() {
+        // not implemented yet...
+        return false;
     }
 }

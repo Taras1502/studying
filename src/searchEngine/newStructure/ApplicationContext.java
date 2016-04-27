@@ -59,7 +59,7 @@ public class ApplicationContext {
     }
 
     public String formDiscSegmentPath(int id) {
-        return workingDir + "\\" + id + SEGMENT_EXT;
+        return workingDir + "/" + id + SEGMENT_EXT;
     }
 
     public void addNewDiscSegment(DiscSegment discSegment) {

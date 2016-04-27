@@ -1,0 +1,13 @@
+        MODULES:                    OUTPUT:
+        1. Segment Manager          - ability to retrieve post lists from both segments
+              MemSeg                - maintain concurrent access to memory segment (read/write) and disc segments (read)
+              DiscSeg               - mechanism for merging disc segments
+              PosList               -
+
+        2. Dictionary
+        3. Index Manager
+prog    4. Document Store           - concurrent doc registration
+                                    - concurrent read/write access to doc data (get seg. index by docID, get doc path by odcID)
+                                    - efficient doc data storage
+                                    - mechanism to commit changes to disc
+        5. Search Manager
