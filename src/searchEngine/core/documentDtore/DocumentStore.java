@@ -56,13 +56,16 @@ public class DocumentStore {
         RandomAccessFile docDataStore = documentStore.docDataStore;
         try {
             long docsFileLen = docDataStore.length();
+            System.out.println("FP " + docDataStore.getFilePointer());
             long pos = 0;
+            int docId;
+            docDataStore.seek(0);
             do {
-                int docId = docDataStore.readInt();
-                int docHash = docDataStore.readInt();
+                docId = docDataStore.readInt();
                 int segId = docDataStore.readInt();
+                int docHash = docDataStore.readInt();
                 short pathLen = docDataStore.readShort();
-                docDataStore.seek(pathLen);
+                docDataStore.skipBytes(pathLen);
 
                 DocData currentDoc = new DocData(segId, pos);
                 documents.put(docId, currentDoc);
@@ -74,9 +77,10 @@ public class DocumentStore {
                     hashes.put(docHash, docs);
                 }
                 docs.add(docId);
-
+                System.out.println("load " + docId + " " + segId + " " + docHash + " " + pathLen);
                 pos += INT_SIZE + INT_SIZE + SHORT_SIZE + pathLen;
-            } while (docsFileLen > docDataStore.getFilePointer());
+            } while (docDataStore.getFilePointer() < docsFileLen);
+            documentStore.availableDocId = docId + 1;
             return documentStore;
         } catch (IOException e) {
             e.printStackTrace();
@@ -174,11 +178,18 @@ public class DocumentStore {
     }
 
     public String getDocPath(int docId) {
-        DocData docData = documents.get(docId);
-        if (docData != null) {
-            return readDocPath(docData.getPosition());
-        } else {
-            return null;
+        try {
+            readLock.lock();
+
+            DocData docData = documents.get(docId);
+            if (docData != null) {
+                System.out.println("docPath " + docId);
+                return readDocPath(docData.getPosition());
+            } else {
+                return null;
+            }
+        } finally {
+            readLock.unlock();
         }
     }
 
@@ -214,10 +225,11 @@ public class DocumentStore {
     private String readDocPath(long pos) {
         synchronized (fileLock) {
             try {
-                docDataStore.seek(pos + 3 * INT_SIZE); // docId + docHash + segId
+                docDataStore.seek(pos + INT_SIZE + INT_SIZE + INT_SIZE); // docId + segId + docHash
                 short pathLen = docDataStore.readShort();
                 byte[] pathBytes = new byte[pathLen];
-                docDataStore.readFully(pathBytes);
+                System.out.println(pos + " pathLen " + pathLen);
+                docDataStore.read(pathBytes);
                 return new String(pathBytes);
             } catch (IOException e) {
                 e.printStackTrace();
@@ -229,7 +241,7 @@ public class DocumentStore {
     private long writeDoc(int docId, int segId, int docHash, String docPath) {
         synchronized (fileLock) {
             try {
-                long pos = docDataStore.getFilePointer();
+                long pos = docDataStore.length();
                 docDataStore.seek(pos);
                 docDataStore.writeInt(docId);
                 docDataStore.writeInt(segId);
@@ -242,6 +254,14 @@ public class DocumentStore {
                 e.printStackTrace();
                 return -1;
             }
+        }
+    }
+
+    public void close() {
+        try {
+            docDataStore.close();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 }
