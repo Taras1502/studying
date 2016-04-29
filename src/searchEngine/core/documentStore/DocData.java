@@ -1,4 +1,4 @@
-package searchEngine.core.documentDtore;
+package searchEngine.core.documentStore;
 
 /**
  * Created by macbookpro on 4/27/16.
