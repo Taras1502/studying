@@ -78,7 +78,7 @@ public class DocumentStore {
                 }
                 docs.add(docId);
                 System.out.println("load " + docId + " " + segId + " " + docHash + " " + pathLen);
-                pos += INT_SIZE + INT_SIZE + SHORT_SIZE + pathLen;
+                pos += INT_SIZE +  INT_SIZE + INT_SIZE + SHORT_SIZE + pathLen;
             } while (docDataStore.getFilePointer() < docsFileLen);
             documentStore.availableDocId = docId + 1;
             return documentStore;

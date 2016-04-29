@@ -11,10 +11,10 @@ public class DocStoreTest {
         String[] paths = {"1", "2", "3", "4", "5"};
         final DocumentStore documentStore = DocumentStore.load("/Users/macbookpro/Desktop/test");
         int id = documentStore.registerDocument("/Users/macbookpro/Desktop/tes", 10);
-        System.out.println(documentStore.getSegmentId(id) + " " + documentStore.getDocPath(id));
-        documentStore.updateSegmentId(id, 11);
-        System.out.println(documentStore.getSegmentId(id) + " " + documentStore.getDocPath(id));
-//        documentStore.commit();
+        System.out.println(documentStore.getSegmentId(0) + " " + documentStore.getDocPath(111));
+        id = documentStore.registerDocument("/Users/macbookpro/Desktop/tests", 13);
+        System.out.println(documentStore.getSegmentId(1) + " " + documentStore.getDocPath(1));
+        documentStore.commit();
 
         Runnable docRegister = new DocRegister(documentStore);
         Runnable segIdRetriever = new SegIdRetriever(documentStore);
