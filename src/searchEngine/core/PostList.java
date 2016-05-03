@@ -1,17 +1,23 @@
 package searchEngine.core;
 
+import searchEngine.core.documentStore.*;
+import searchEngine.core.documentStore.DocumentStore;
+
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.*;
 
 /**
  * Created by macbookpro on 4/19/16.
  */
-public class PostList {
+
+// TODO: make class thread safe!!!!!
+public class PostList implements Serializable {
 
     private int size;
     private Map<Integer, List<Integer>> posts;
     public PostList() {
-        posts = new TreeMap<>();
+        posts = new HashMap<>();
         size = 0;
     }
 
@@ -57,6 +63,10 @@ public class PostList {
             }
         }
         return byteBuffer.array();
+    }
+
+    public void synch(DocumentStore documentStore) {
+        // TODO: synchronize postlist in accordance with last index updates.
     }
 
     public PostList mergePostList(PostList that) {
@@ -110,16 +120,5 @@ public class PostList {
     @Override
     public String toString() {
         return posts.toString();
-    }
-
-
-    public static void main(String[] args) {
-        List<Integer> l1 = new ArrayList<>();
-        List<Integer> l2 = new ArrayList<>();
-
-        l1.addAll(Arrays.asList(1,2,5,4,7));
-        l2.addAll(Arrays.asList(1,3,6));
-
-        System.out.println(mergeLists(l1, l2).toString());
     }
 }

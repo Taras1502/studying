@@ -1,6 +1,5 @@
 package searchEngine.core.documentStore;
 
-import searchEngine.core.Document;
 import searchEngine.core.Logger;
 
 import java.io.IOException;
@@ -78,13 +77,9 @@ public class DocumentStore {
                 documents.put(docId, currentDoc);
 
                 // adding doc to the hash store
-                List<Integer> docs = hashes.get(docHash);
-                if (docs == null) {
-                    docs = new ArrayList<>();
-                    hashes.put(docHash, docs);
-                }
+                List<Integer> docs = hashes.putIfAbsent(docHash, new ArrayList<>());
                 docs.add(docId);
-                pos += INT_SIZE +  INT_SIZE + INT_SIZE + SHORT_SIZE + pathLen;
+                pos += INT_SIZE + INT_SIZE + INT_SIZE + SHORT_SIZE + pathLen;
                 Logger.info(DocumentStore.class, "Document has been loaded with docId " + docId);
 
             } while (docDataStore.getFilePointer() < docsFileLen);
@@ -102,9 +97,9 @@ public class DocumentStore {
     }
 
     /*
-    Registers documents in the document store and returns docId.
-    If the document already exists - its docId is returned.
-     */
+        Registers documents in the document store and returns docId.
+        If the document already exists - its docId is returned.
+    */
     public int registerDocument(String docPath, int segmentId) {
         int id = contains(docPath);
         if (id != -1) {
