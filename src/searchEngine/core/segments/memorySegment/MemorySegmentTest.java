@@ -36,7 +36,7 @@ public class MemorySegmentTest {
                 int val = rand.nextInt(100) + 0;
                 memorySegment.addPostList(String.valueOf(val), 0, i);
                 if (i % 10000 == 0) {
-                    memorySegment.commit();
+//                    memorySegment.commit();
                 }
             }
         }

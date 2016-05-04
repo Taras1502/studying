@@ -7,6 +7,7 @@ import searchEngine.core.segments.discSegment.DiscSegment;
 
 import java.io.*;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
@@ -15,10 +16,14 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 /**
  * Created by macbookpro on 4/27/16.
  */
+
+// TODO: Provide thread safety
 public class MemorySegment {
+    private final String MEMORY_SEGMENT_PATH = "%s\\%s.mem";
     private static final int INT_SIZE = 4;
 
-    private String path;
+    private String workingDir;
+    private String segmentPath;
     private volatile int id;
     private volatile long size;
     private Map<String, PostList> segmentDictionary;
@@ -34,33 +39,36 @@ public class MemorySegment {
     private final ReentrantReadWriteLock.ReadLock readLock = lock.readLock();
     private final ReentrantReadWriteLock.WriteLock writeLock = lock.writeLock();
 
-    public MemorySegment(int id, String path) {
+    private MemorySegment(int id, String workingDir) {
         this.id = id;
-        this.path = path;
+        this.workingDir = workingDir;
+        segmentPath = String.format(MEMORY_SEGMENT_PATH, workingDir, id);
         segmentDictionary = new HashMap<>();
         searchable = true;
         writable = true;
         updated = false;
     }
 
-    public static MemorySegment create(int segmentId, String path) {
-        if (Files.notExists(Paths.get(path))) {
+    public static MemorySegment create(int segmentId, String workingDir) {
+        MemorySegment memorySegment = new MemorySegment(segmentId, workingDir);
+        Path segPath = Paths.get(memorySegment.segmentPath);
+        if (Files.notExists(segPath)) {
             try {
-                Files.createFile(Paths.get(path));
+                Files.createFile(segPath);
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
-        return new MemorySegment(segmentId, path);
+        return memorySegment;
     }
 
-    public static MemorySegment load(int id, String path) {
+    public static MemorySegment load(int id, String workingDir) {
         ObjectInputStream ois = null;
         try {
-            MemorySegment memorySegment = new MemorySegment(id, path);
-            ois = new ObjectInputStream(new FileInputStream(path));
+            MemorySegment memorySegment = new MemorySegment(id, workingDir);
+            ois = new ObjectInputStream(new FileInputStream(memorySegment.segmentPath));
             memorySegment.segmentDictionary = (Map<String, searchEngine.core.PostList>) ois.readObject();
-            memorySegment.size = new File(path).length();
+            memorySegment.size = new File(memorySegment.segmentPath).length();
             return memorySegment;
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
@@ -115,7 +123,7 @@ public class MemorySegment {
 
             PostList postList = segmentDictionary.get(token);
             if (postList == null) {
-                postList = new PostList();
+                postList = new PostList(id);
                 segmentDictionary.put(token, postList);
                 size += INT_SIZE * 2; // int1 - docID, int2 - posNumber
             }
@@ -125,10 +133,20 @@ public class MemorySegment {
         } finally {
             writeLock.unlock();
         }
-
     }
 
-    public void createBuffer() {
+    public void addPostList(String token, PostList postList) {
+        try {
+            writeLock.lock();
+            segmentDictionary.put(token, postList);
+            size += postList.getSize();
+            updated = true;
+        } finally {
+            writeLock.unlock();
+        }
+    }
+
+    public void createBuffer(String path) {
         try {
             BufferedOutputStream bufferOS = new BufferedOutputStream(new FileOutputStream(path));
             buffer = new DataOutputStream(bufferOS);
@@ -159,16 +177,17 @@ public class MemorySegment {
         }
     }
 
-    public DiscSegment writeToDisc(Index index) {
+    public DiscSegment writeToDisc(Index index, int id) {
         BufferedOutputStream indOS;
         DataOutputStream indDOS = null;
 
+        setWritable(false);
         int pos = 0;
         try {
-            DiscSegment discSegment = new DiscSegment(id, path);
+            DiscSegment discSegment = new DiscSegment(id, workingDir);
 
             readLock.lock();
-            indOS = new BufferedOutputStream(new FileOutputStream(path + "d"));
+            indOS = new BufferedOutputStream(new FileOutputStream(discSegment.getSegmentPath()));
             indDOS = new DataOutputStream(indOS);
 
             for (Map.Entry<String, PostList> e: segmentDictionary.entrySet()) {
@@ -180,7 +199,7 @@ public class MemorySegment {
                 index.addToken(e.getKey(), discSegment, pos);
                 pos += postList.length + INT_SIZE;
             }
-            return new DiscSegment(id, path);
+            return discSegment;
         } catch (IOException e) {
             e.printStackTrace();
         } finally {

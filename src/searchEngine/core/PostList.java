@@ -8,23 +8,25 @@ import java.nio.ByteBuffer;
 import java.util.*;
 
 /**
- * Created by macbookpro on 4/19/16.
+ * author: Taras.Mykulyn 4/19/16.
+ * This class is not thread safe.
  */
-
-// TODO: make class thread safe!!!!!
+// TODO: Think of thread safety issue in this class. Provide if needed.
 public class PostList implements Serializable {
-
+    private int segId;
     private int size;
     private Map<Integer, List<Integer>> posts;
-    public PostList() {
-        posts = new HashMap<>();
+
+    public PostList(int segId) {
+        this.segId = segId;
+        posts = new TreeMap<>();
         size = 0;
     }
 
-    public static PostList fromBytes(byte[] bytes) {
+    public static PostList fromBytes(byte[] bytes, int segId) {
         ByteBuffer byteBuffer = ByteBuffer.wrap(bytes);
 
-        PostList postList = new PostList();
+        PostList postList = new PostList(segId);
         while (byteBuffer.hasRemaining()) {
             int docId = byteBuffer.getInt();
             int positionsNum = byteBuffer.getInt();
@@ -38,7 +40,15 @@ public class PostList implements Serializable {
         return postList;
     }
 
-    public void addPost(int id, int pos) {
+    public int getSegmentId() {
+        return segId;
+    }
+
+    public int getSize() {
+        return size;
+    }
+
+    public void addPost(int id, Integer pos) {
         List<Integer> post = posts.get(id);
         if (post == null) {
             post = new ArrayList<>();
@@ -47,6 +57,17 @@ public class PostList implements Serializable {
         }
         post.add(pos);
         size += 4; // 4 bytes for pos
+    }
+
+    public void addPost(int id, List<Integer> pos) {
+        List<Integer> post = posts.get(id);
+        if (post == null) {
+            post = new ArrayList<>();
+            posts.put(id, post);
+            size += 8; // 4 bytes for docID and 4 bytes for num of positions
+        }
+        post.addAll(pos);
+        size += 4 * pos.size(); // 4 bytes for each pos
     }
 
     public byte[] toBytes() {
@@ -66,30 +87,64 @@ public class PostList implements Serializable {
     }
 
     public void synch(DocumentStore documentStore) {
-        // TODO: synchronize postlist in accordance with last index updates.
-    }
-
-    public PostList mergePostList(PostList that) {
-        Map<Integer, String> res = new TreeMap<>();
-        Set<Integer> thisDocIds = this.posts.keySet();
-        Set<Integer> thatDocIds = that.posts.keySet();
-
-        thisDocIds.addAll(thatDocIds);
-        Iterator it = thisDocIds.iterator();
+        Iterator<Map.Entry<Integer, List<Integer>>> it = posts.entrySet().iterator();
+        Map.Entry<Integer, List<Integer>> entry;
         while(it.hasNext()) {
-            int docId = (int) it.next();
-//            if (docRegistry.getRelevant(docId) == )
+            entry = it.next();
+            if (documentStore.getSegmentId(entry.getKey()) != getSegmentId()) {
+                it.remove();
+            }
         }
-        return null;
     }
 
-//    private PostList merge(PostList p1, PostList p2) {
-//
-//    }
+    public PostList mergePostList(PostList that, DocumentStore documentStore, int newSegId) {
+        synch(documentStore);
+        that.synch(documentStore);
 
+        PostList res = new PostList(newSegId);
+        int thisDocId;
+        int thatDocId;
+        Iterator<Map.Entry<Integer, List<Integer>>> thisIt = posts.entrySet().iterator();
+        Iterator<Map.Entry<Integer, List<Integer>>> thatIt = that.posts.entrySet().iterator();
+        Map.Entry<Integer, List<Integer>> thisEntry = thisIt.next();
+        Map.Entry<Integer, List<Integer>> thatEntry = thatIt.next();
 
+        while(thisIt.hasNext() && thatIt.hasNext()) {
+            thisDocId = thisEntry.getKey();
+            thatDocId = thatEntry.getKey();
 
-    private static List<Integer>  mergeLists(List<Integer> list1, List<Integer> list2) {
+            if (thisDocId < thatDocId) {
+                res.addPost(thisDocId, thisEntry.getValue());
+                thisEntry = thisIt.next();
+            } else if (thisDocId > thatDocId) {
+                res.addPost(thatDocId, thatEntry.getValue());
+                thatEntry = thatIt.next();
+            } else {
+                // not likely to happen
+                res.addPost(thisDocId, mergeLists(thisEntry.getValue(), thatEntry.getValue()));
+                thisEntry = thisIt.next();
+                thatEntry = thatIt.next();
+            }
+        }
+
+        Iterator<Map.Entry<Integer, List<Integer>>> remaining;
+        if (thisIt.hasNext()) {
+            remaining = thisIt;
+        } else if (thatIt.hasNext()){
+            remaining = thatIt;
+        } else {
+            return res;
+        }
+
+        Map.Entry<Integer, List<Integer>> remainingEntry;
+        while(remaining.hasNext()) {
+            remainingEntry = remaining.next();
+            res.addPost(remainingEntry.getKey(), remainingEntry.getValue());
+        }
+        return res;
+    }
+
+    private static List<Integer> mergeLists(List<Integer> list1, List<Integer> list2) {
         if (list1.get(list1.size() - 1) > list2.get(list2.size() - 1)) {
             return merge(list1, list2);
         } else {
@@ -119,6 +174,6 @@ public class PostList implements Serializable {
 
     @Override
     public String toString() {
-        return posts.toString();
+        return segId + ": " + posts.toString();
     }
 }

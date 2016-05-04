@@ -11,9 +11,12 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 /**
  * Created by macbookpro on 4/27/16.
  */
+// TODO: Provide thread safety
 public class DiscSegment {
+    private final String DISC_SEGMENT_PATH = "%s\\%s.disc";
     private int id;
-    private String path;
+    private String workingDir;
+    private String segmentPath;
     private RandomAccessFile index;
 
     private volatile boolean searchable;
@@ -23,16 +26,21 @@ public class DiscSegment {
     private final ReentrantReadWriteLock.ReadLock readLock = lock.readLock();
 
 
-    public DiscSegment(int id, String path) {
+    public DiscSegment(int id, String workingDir) {
         this.id = id;
-        this.path = path;
-        this.searchable = false;
+        this.workingDir = workingDir;
+        segmentPath = String.format(DISC_SEGMENT_PATH, workingDir, id);
+        searchable = false;
         try {
-            index = new RandomAccessFile(path, "rw");
+            index = new RandomAccessFile(segmentPath, "rw");
         } catch (FileNotFoundException e) {
             Logger.error(getClass(), "Could not create disc segment file with id " + id);
         }
 
+    }
+
+    public String getSegmentPath() {
+        return segmentPath;
     }
 
     public int getId() {
@@ -55,7 +63,7 @@ public class DiscSegment {
                 postList = new byte[index.readInt()];
                 index.read(postList);
             }
-            return PostList.fromBytes(postList);
+            return PostList.fromBytes(postList, id);
         } catch (IOException e) {
             e.printStackTrace();
         }
