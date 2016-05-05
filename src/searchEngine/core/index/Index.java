@@ -52,10 +52,10 @@ public class Index {
 
     private Index(String workingDir) {
         this.workingDir = workingDir;
-        DISC_SEGMENTS_FILE_PATH = workingDir + "\\" + "segments.disc";
-        MEM_SEGMENTS_FILE_PATH = workingDir + "\\" + "segments.disc";
-        DICTIONARY_FILE_PATH = workingDir + "\\" + "dictionary";
-        DOC_STORE_FILE_PATH = workingDir + "\\" + "docStore";
+        DISC_SEGMENTS_FILE_PATH = workingDir + "/" + "segments.disc";
+        MEM_SEGMENTS_FILE_PATH = workingDir + "/" + "segments.disc";
+        DICTIONARY_FILE_PATH = workingDir + "/" + "dictionary";
+        DOC_STORE_FILE_PATH = workingDir + "/" + "docStore";
         discSegments = new TreeMap<>();
         memorySegments = new TreeMap<>();
         dictionary = new HashMap<>();

@@ -18,9 +18,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * Created by macbookpro on 4/27/16.
  */
 
-// TODO: Provide thread safety
 public class MemorySegment implements Serializable {
-    private final String MEMORY_SEGMENT_PATH = "%s\\%s.mem";
+    private final String MEMORY_SEGMENT_PATH = "%s/%s.mem";
     private static final int INT_SIZE = 4;
 
     private String workingDir;
@@ -30,9 +29,6 @@ public class MemorySegment implements Serializable {
     private volatile long approxTakenSize;
     private volatile int currentDocNumIndexing;
     private Map<String, PostList> segmentDictionary;
-
-    private DataOutputStream buffer;
-    private int bufferSize;
 
     private volatile boolean searchable;
     private volatile boolean writable;
@@ -245,6 +241,7 @@ public class MemorySegment implements Serializable {
                 index.addToken(e.getKey(), discSegment, pos);
                 pos += postList.length + INT_SIZE;
             }
+            segmentDictionary = null;
             return discSegment;
         } catch (IOException e) {
             e.printStackTrace();

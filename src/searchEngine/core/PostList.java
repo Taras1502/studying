@@ -6,6 +6,7 @@ import searchEngine.core.documentStore.DocumentStore;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.*;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * author: Taras.Mykulyn 4/19/16.
@@ -16,6 +17,10 @@ public class PostList implements Serializable {
     private int segId;
     private int size;
     private Map<Integer, List<Integer>> posts;
+
+    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+    private final ReentrantReadWriteLock.ReadLock readLock = lock.readLock();
+    private final ReentrantReadWriteLock.WriteLock writeLock = lock.writeLock();
 
     public PostList(int segId) {
         this.segId = segId;
@@ -41,59 +46,90 @@ public class PostList implements Serializable {
     }
 
     public int getSegmentId() {
-        return segId;
+        try {
+            readLock.lock();
+            return segId;
+        } finally {
+            readLock.unlock();
+        }
     }
 
     public int getSize() {
-        return size;
+        try {
+            readLock.lock();
+            return size;
+        } finally {
+            readLock.unlock();
+        }
     }
 
     public void addPost(int id, Integer pos) {
-        List<Integer> post = posts.get(id);
-        if (post == null) {
-            post = new ArrayList<>();
-            posts.put(id, post);
-            size += 8; // 4 bytes for docID and 4 bytes for num of positions
+        try {
+            writeLock.lock();
+            List<Integer> post = posts.get(id);
+            if (post == null) {
+                post = new ArrayList<>();
+                posts.put(id, post);
+                size += 8; // 4 bytes for docID and 4 bytes for num of positions
+            }
+            post.add(pos);
+            size += 4; // 4 bytes for pos
+        } finally {
+            writeLock.unlock();
         }
-        post.add(pos);
-        size += 4; // 4 bytes for pos
     }
 
     public void addPost(int id, List<Integer> pos) {
-        List<Integer> post = posts.get(id);
-        if (post == null) {
-            post = new ArrayList<>();
-            posts.put(id, post);
-            size += 8; // 4 bytes for docID and 4 bytes for num of positions
+        try {
+            writeLock.lock();
+            List<Integer> post = posts.get(id);
+            if (post == null) {
+                post = new ArrayList<>();
+                posts.put(id, post);
+                size += 8; // 4 bytes for docID and 4 bytes for num of positions
+            }
+            post.addAll(pos);
+            size += 4 * pos.size(); // 4 bytes for each pos
+        } finally {
+            writeLock.unlock();
         }
-        post.addAll(pos);
-        size += 4 * pos.size(); // 4 bytes for each pos
     }
 
     public byte[] toBytes() {
         ByteBuffer byteBuffer = ByteBuffer.allocate(size);
 
-        for (Map.Entry<Integer, List<Integer>> post: posts.entrySet()) {
-            List<Integer> positions = post.getValue();
-            Collections.sort(positions);
+        try {
+            writeLock.lock();
+            for (Map.Entry<Integer, List<Integer>> post: posts.entrySet()) {
+                List<Integer> positions = post.getValue();
+                Collections.sort(positions);
 
-            byteBuffer.putInt(post.getKey()); // docID
-            byteBuffer.putInt(positions.size()); // num of positions
-            for (int pos: positions) {
-                byteBuffer.putInt(pos); // position
+                byteBuffer.putInt(post.getKey()); // docID
+                byteBuffer.putInt(positions.size()); // num of positions
+                for (int pos: positions) {
+                    byteBuffer.putInt(pos); // position
+                }
             }
+        } finally {
+            writeLock.unlock();
         }
+
         return byteBuffer.array();
     }
 
     public void synch(DocumentStore documentStore) {
-        Iterator<Map.Entry<Integer, List<Integer>>> it = posts.entrySet().iterator();
-        Map.Entry<Integer, List<Integer>> entry;
-        while(it.hasNext()) {
-            entry = it.next();
-            if (documentStore.getSegmentId(entry.getKey()) != getSegmentId()) {
-                it.remove();
+        try {
+            writeLock.lock();
+            Iterator<Map.Entry<Integer, List<Integer>>> it = posts.entrySet().iterator();
+            Map.Entry<Integer, List<Integer>> entry;
+            while(it.hasNext()) {
+                entry = it.next();
+                if (documentStore.getSegmentId(entry.getKey()) != getSegmentId()) {
+                    it.remove();
+                }
             }
+        } finally {
+            writeLock.unlock();
         }
     }
 
@@ -104,43 +140,51 @@ public class PostList implements Serializable {
         PostList res = new PostList(newSegId);
         int thisDocId;
         int thatDocId;
-        Iterator<Map.Entry<Integer, List<Integer>>> thisIt = posts.entrySet().iterator();
-        Iterator<Map.Entry<Integer, List<Integer>>> thatIt = that.posts.entrySet().iterator();
-        Map.Entry<Integer, List<Integer>> thisEntry = thisIt.next();
-        Map.Entry<Integer, List<Integer>> thatEntry = thatIt.next();
+        try {
+            readLock.lock();
 
-        while(thisIt.hasNext() && thatIt.hasNext()) {
-            thisDocId = thisEntry.getKey();
-            thatDocId = thatEntry.getKey();
+            Iterator<Map.Entry<Integer, List<Integer>>> thisIt = posts.entrySet().iterator();
+            Iterator<Map.Entry<Integer, List<Integer>>> thatIt = that.posts.entrySet().iterator();
+            Map.Entry<Integer, List<Integer>> thisEntry = thisIt.next();
+            Map.Entry<Integer, List<Integer>> thatEntry = thatIt.next();
 
-            if (thisDocId < thatDocId) {
-                res.addPost(thisDocId, thisEntry.getValue());
-                thisEntry = thisIt.next();
-            } else if (thisDocId > thatDocId) {
-                res.addPost(thatDocId, thatEntry.getValue());
-                thatEntry = thatIt.next();
-            } else {
-                // not likely to happen
-                res.addPost(thisDocId, mergeLists(thisEntry.getValue(), thatEntry.getValue()));
-                thisEntry = thisIt.next();
-                thatEntry = thatIt.next();
+            while(thisIt.hasNext() && thatIt.hasNext()) {
+                thisDocId = thisEntry.getKey();
+                thatDocId = thatEntry.getKey();
+
+                if (thisDocId < thatDocId) {
+                    res.addPost(thisDocId, thisEntry.getValue());
+                    thisEntry = thisIt.next();
+                } else if (thisDocId > thatDocId) {
+                    res.addPost(thatDocId, thatEntry.getValue());
+                    thatEntry = thatIt.next();
+                } else {
+                    // not likely to happen
+                    res.addPost(thisDocId, mergeLists(thisEntry.getValue(), thatEntry.getValue()));
+                    thisEntry = thisIt.next();
+                    thatEntry = thatIt.next();
+                }
             }
+
+            Iterator<Map.Entry<Integer, List<Integer>>> remaining;
+            if (thisIt.hasNext()) {
+                remaining = thisIt;
+            } else if (thatIt.hasNext()){
+                remaining = thatIt;
+            } else {
+                return res;
+            }
+
+            Map.Entry<Integer, List<Integer>> remainingEntry;
+            while(remaining.hasNext()) {
+                remainingEntry = remaining.next();
+                res.addPost(remainingEntry.getKey(), remainingEntry.getValue());
+            }
+
+        } finally {
+            readLock.unlock();
         }
 
-        Iterator<Map.Entry<Integer, List<Integer>>> remaining;
-        if (thisIt.hasNext()) {
-            remaining = thisIt;
-        } else if (thatIt.hasNext()){
-            remaining = thatIt;
-        } else {
-            return res;
-        }
-
-        Map.Entry<Integer, List<Integer>> remainingEntry;
-        while(remaining.hasNext()) {
-            remainingEntry = remaining.next();
-            res.addPost(remainingEntry.getKey(), remainingEntry.getValue());
-        }
         return res;
     }
 

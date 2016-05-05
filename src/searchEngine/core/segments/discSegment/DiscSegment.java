@@ -14,7 +14,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  */
 // TODO: Provide thread safety
 public class DiscSegment implements Serializable {
-    private final String DISC_SEGMENT_PATH = "%s\\%s.disc";
+    private final String DISC_SEGMENT_PATH = "%s/%s.disc";
     private int id;
     private String workingDir;
     private String segmentPath;
