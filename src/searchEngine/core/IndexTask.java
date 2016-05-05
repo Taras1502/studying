@@ -1,6 +1,7 @@
 package searchEngine.core;
 
-import searchEngine.interfaces.MemorySegment;
+
+import searchEngine.core.segments.memorySegment.MemorySegment;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -23,6 +24,7 @@ public class IndexTask implements Runnable {
 
     @Override
     public void run() {
+        long start = System.currentTimeMillis();
         BufferedReader br = null;
         try {
             br = new BufferedReader(new FileReader(filePath));
@@ -39,6 +41,8 @@ public class IndexTask implements Runnable {
                     memorySegment.addPostList(token, docId, pos++);
                 }
             }
+            memorySegment.markDocIndexFinished();
+            Logger.info(getClass(), "FINISHED INDEXING " + filePath + "... time = " + (System.currentTimeMillis() - start));
         } catch (IOException e) {
             e.printStackTrace();
         } finally {

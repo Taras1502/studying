@@ -32,8 +32,8 @@ public class DocumentStore {
     private final ReentrantReadWriteLock.WriteLock writeLock = lock.writeLock();
     private final Object fileLock = new Object();
 
-    private DocumentStore(String workingDir) {
-        path = workingDir + "/" + "docStore";
+    private DocumentStore(String filePath) {
+        path = filePath;
         availableDocId = 0;
         updated = false;
         documents = new HashMap<>();

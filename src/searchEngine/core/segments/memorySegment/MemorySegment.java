@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -18,7 +19,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  */
 
 // TODO: Provide thread safety
-public class MemorySegment {
+public class MemorySegment implements Serializable {
     private final String MEMORY_SEGMENT_PATH = "%s\\%s.mem";
     private static final int INT_SIZE = 4;
 
@@ -26,6 +27,8 @@ public class MemorySegment {
     private String segmentPath;
     private volatile int id;
     private volatile long size;
+    private volatile long approxTakenSize;
+    private volatile int currentDocNumIndexing;
     private Map<String, PostList> segmentDictionary;
 
     private DataOutputStream buffer;
@@ -33,7 +36,6 @@ public class MemorySegment {
 
     private volatile boolean searchable;
     private volatile boolean writable;
-    private volatile boolean updated;
 
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
     private final ReentrantReadWriteLock.ReadLock readLock = lock.readLock();
@@ -46,7 +48,9 @@ public class MemorySegment {
         segmentDictionary = new HashMap<>();
         searchable = true;
         writable = true;
-        updated = false;
+        size = 0;
+        approxTakenSize = 0;
+        currentDocNumIndexing = 0;
     }
 
     public static MemorySegment create(int segmentId, String workingDir) {
@@ -89,7 +93,31 @@ public class MemorySegment {
     }
 
     public long getSize() {
-        return size;
+        try {
+            readLock.lock();
+            return size;
+        } finally {
+            readLock.unlock();
+        }
+    }
+
+    public long getTakenSize() {
+        try {
+            readLock.lock();
+            return approxTakenSize;
+        } finally {
+            readLock.unlock();
+        }
+    }
+
+    public void takeSize(long sizeToIndex) {
+        try {
+            readLock.lock();
+            approxTakenSize += sizeToIndex;
+            currentDocNumIndexing++;
+        } finally {
+            readLock.unlock();
+        }
     }
 
     public boolean isSearchable() {
@@ -106,6 +134,24 @@ public class MemorySegment {
 
     public void setWritable(boolean writable) {
         this.writable = writable;
+    }
+
+    public boolean isInProgress() {
+        try {
+            readLock.lock();
+            return currentDocNumIndexing != 0;
+        } finally {
+            readLock.unlock();
+        }
+    }
+
+    public void markDocIndexFinished() {
+        try {
+            writeLock.lock();
+            currentDocNumIndexing--;
+        } finally {
+            writeLock.unlock();
+        }
     }
 
     public searchEngine.core.PostList getPostList(String token) {
@@ -129,7 +175,6 @@ public class MemorySegment {
             }
             postList.addPost(docId, pos);
             size += INT_SIZE; // pos
-            updated = true;
         } finally {
             writeLock.unlock();
         }
@@ -140,12 +185,12 @@ public class MemorySegment {
             writeLock.lock();
             segmentDictionary.put(token, postList);
             size += postList.getSize();
-            updated = true;
         } finally {
             writeLock.unlock();
         }
     }
 
+    /*
     public void createBuffer(String path) {
         try {
             BufferedOutputStream bufferOS = new BufferedOutputStream(new FileOutputStream(path));
@@ -176,6 +221,7 @@ public class MemorySegment {
             return -1;
         }
     }
+    */
 
     public DiscSegment writeToDisc(Index index, int id) {
         BufferedOutputStream indOS;

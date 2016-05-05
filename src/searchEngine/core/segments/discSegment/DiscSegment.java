@@ -6,24 +6,25 @@ import searchEngine.core.PostList;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.io.Serializable;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * Created by macbookpro on 4/27/16.
  */
 // TODO: Provide thread safety
-public class DiscSegment {
+public class DiscSegment implements Serializable {
     private final String DISC_SEGMENT_PATH = "%s\\%s.disc";
     private int id;
     private String workingDir;
     private String segmentPath;
-    private RandomAccessFile index;
+    private transient RandomAccessFile index;
 
     private volatile boolean searchable;
 
-    private final Object fileLock = new Object();
-    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
-    private final ReentrantReadWriteLock.ReadLock readLock = lock.readLock();
+    private final transient Object fileLock = new Object();
+    private final transient ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+    private final transient ReentrantReadWriteLock.ReadLock readLock = lock.readLock();
 
 
     public DiscSegment(int id, String workingDir) {

@@ -8,8 +8,7 @@ import searchEngine.core.segments.memorySegment.MemorySegment;
 
 import java.io.*;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -59,6 +58,7 @@ public class Index {
         DOC_STORE_FILE_PATH = workingDir + "\\" + "docStore";
         discSegments = new TreeMap<>();
         memorySegments = new TreeMap<>();
+        dictionary = new HashMap<>();
 
         updated = false;
         lastIdTaken = new AtomicInteger(0);
@@ -79,8 +79,13 @@ public class Index {
     public static Index create(String workingDir) {
         Index index = new Index(workingDir);
         index.documentStore = DocumentStore.create(index.DOC_STORE_FILE_PATH);
+        index.createNewMemorySegment();
         // TODO: implement working directory clean
         return index;
+    }
+
+    public DocumentStore getDocumentStore() {
+        return documentStore;
     }
 
     /**
@@ -102,6 +107,7 @@ public class Index {
     }
 
     public PostList getPostList(String token) {
+        long start = System.currentTimeMillis();
         // getting post lists from memory segments
         List<PostList> postLists = new ArrayList<>();
         try {
@@ -109,7 +115,10 @@ public class Index {
             for (Map.Entry<Integer, MemorySegment> entry: memorySegments.entrySet()) {
                 MemorySegment memorySegment = entry.getValue();
                 if (memorySegment.isSearchable()) {
-                    postLists.add(memorySegment.getPostList(token));
+                    PostList p = memorySegment.getPostList(token);
+                    if (p != null) {
+                        postLists.add(p);
+                    }
                 }
             }
         } finally {
@@ -119,40 +128,59 @@ public class Index {
         // getting post lists from disc segments
         try {
             dicReadLock.lock();
-            for (Map.Entry<DiscSegment, Integer> entry: dictionary.get(token).entrySet()) {
-                postLists.add(entry.getKey().getPostList(entry.getValue()));
+            Map<DiscSegment, Integer> discRes = dictionary.get(token);
+            if (discRes != null) {
+                for (Map.Entry<DiscSegment, Integer> entry : discRes.entrySet()) {
+                    PostList p = entry.getKey().getPostList(entry.getValue());
+                    if (p != null) {
+                        System.out.println("found new post list on disc");
+                        postLists.add(p);
+                    }
+                }
             }
         } finally {
             dicReadLock.unlock();
         }
+        System.out.println("res (search time = " + (System.currentTimeMillis() - start) + " " + postLists.toString());
 
         // TODO: implement an efficient mechanism of merging multiple post lists
         return null;
     }
 
-    public MemorySegment getMemorySegment(long fileSize) {
+    public Future<MemorySegment> getMemorySegment(String filePath) {
+        Future<MemorySegment> futureSegment = new FutureMemorySegment(this, filePath);
+        return futureSegment;
+    }
+
+    MemorySegment getMemSegment(String filePath) {
+        File file = new File(filePath);
+        long approxIndexedSize = file.length() / 3;
+
         // memory segment management logic
         try {
-            memSegReadLock.lock();
+            memSegWriteLock.lock();
             for (Map.Entry<Integer, MemorySegment> entry: memorySegments.entrySet()) {
                 final MemorySegment memorySegment = entry.getValue();
                 if (memorySegment.isWritable()) {
                     // TODO: logic to determine if the memory segment has enough space needs to be revised
-                    if (MAX_MEM_SEGMENT_SIZE - memorySegment.getSize() > fileSize / 3) {
+                    if (MAX_MEM_SEGMENT_SIZE - memorySegment.getTakenSize() > approxIndexedSize) {
+                        memorySegment.takeSize(approxIndexedSize);
                         return memorySegment;
                     } else {
+                        memorySegment.setWritable(false);
                         Logger.info(getClass(), "Submitting task to write memory segment with id " + memorySegment.getId());
                         executorService.submit(new Runnable() {
                             @Override
                             public void run() {
                                 writeMemorySegment(memorySegment);
+                                createNewMemorySegment();
                             }
                         });
                     }
                 }
             }
         } finally {
-            memSegReadLock.unlock();
+            memSegWriteLock.unlock();
         }
 
         // disc segment merge logic
@@ -174,6 +202,10 @@ public class Index {
             discSegReadLock.unlock();
         }
 
+        return null;
+    }
+
+    private MemorySegment createNewMemorySegment() {
         // new memory segment creation logic
         MemorySegment newMemSegment = MemorySegment.create(lastIdTaken.incrementAndGet(), workingDir);
         try {
@@ -187,7 +219,13 @@ public class Index {
     }
 
     private void writeMemorySegment(MemorySegment memorySegment) {
-        memorySegment.setWritable(false);
+        while(memorySegment.isInProgress()) {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
         DiscSegment discSegment = memorySegment.writeToDisc(this, memorySegment.getId());
         // adding newly created disc segment
         try {
@@ -204,6 +242,9 @@ public class Index {
         } finally {
             memSegWriteLock.unlock();
         }
+        // committing
+        commitDictionary();
+        commitSegmentsData();
     }
 
     private void mergeDiscSegments(DiscSegment seg1, DiscSegment seg2) {
