@@ -5,7 +5,7 @@ package searchEngine.core;
  */
 public class Logger {
     public static synchronized void info(Class c, String log) {
-//        System.out.println("[INFO] " + c.getName() + ": " + log);
+        System.out.println("[INFO] " + c.getName() + ": " + log);
     }
 
     public static synchronized void warn(Class c, String log) {

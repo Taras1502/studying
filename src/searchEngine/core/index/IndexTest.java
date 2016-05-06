@@ -14,10 +14,10 @@ import java.util.concurrent.*;
 public class IndexTest {
     public static void main(String[] args) {
         ExecutorService executorService = Executors.newFixedThreadPool(2);
-        File testDir = new File("/Users/macbookpro/Desktop/test");
+        File testDir = new File("D:/docs");
 
 
-        Index index = Index.create("/Users/macbookpro/Desktop/workingDir");
+        Index index = Index.create("D:/workingDir");
         DocumentStore documentStore = index.getDocumentStore();
 
 

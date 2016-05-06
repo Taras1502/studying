@@ -18,7 +18,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class Index {
     private static final int THREAD_NUM = 4; // TODO: need to configure dynamically
     private static final long MAX_MEM_SEGMENT_SIZE = 10240000; // 10 mb
-    private static final int MAX_DISC_SEG_NUM = 5; // 10 mb
+    private static final int MAX_DISC_SEG_NUM = 1000; // 10 mb
 
     private final String DISC_SEGMENTS_FILE_PATH;
     private final String MEM_SEGMENTS_FILE_PATH;
@@ -141,8 +141,9 @@ public class Index {
         } finally {
             dicReadLock.unlock();
         }
-        System.out.println("res (search time = " + (System.currentTimeMillis() - start) + " " + postLists.toString());
+        System.out.println("res (search time = " + (System.currentTimeMillis() - start) + " " + postLists.size());
 
+        postLists.clear();
         // TODO: implement an efficient mechanism of merging multiple post lists
         return null;
     }

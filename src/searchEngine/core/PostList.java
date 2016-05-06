@@ -1,6 +1,5 @@
 package searchEngine.core;
 
-import searchEngine.core.documentStore.*;
 import searchEngine.core.documentStore.DocumentStore;
 
 import java.io.Serializable;
@@ -14,9 +13,10 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  */
 // TODO: Think of thread safety issue in this class. Provide if needed.
 public class PostList implements Serializable {
+    private static final int MIN_BUFF_SIZE = 5;
     private int segId;
     private int size;
-    private Map<Integer, List<Integer>> posts;
+    private Map<Integer, IntBuffer> posts;
 
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
     private final ReentrantReadWriteLock.ReadLock readLock = lock.readLock();
@@ -35,7 +35,7 @@ public class PostList implements Serializable {
         while (byteBuffer.hasRemaining()) {
             int docId = byteBuffer.getInt();
             int positionsNum = byteBuffer.getInt();
-            List<Integer> positions = new ArrayList<>(positionsNum);
+            IntBuffer positions = IntBuffer.allocate(positionsNum);
             for (int i = 0; i < positionsNum; i++) {
                 int p = byteBuffer.getInt();
                 positions.add(p);
@@ -66,9 +66,9 @@ public class PostList implements Serializable {
     public void addPost(int id, Integer pos) {
         try {
             writeLock.lock();
-            List<Integer> post = posts.get(id);
+            IntBuffer post = posts.get(id);
             if (post == null) {
-                post = new ArrayList<>();
+                post = IntBuffer.allocate();
                 posts.put(id, post);
                 size += 8; // 4 bytes for docID and 4 bytes for num of positions
             }
@@ -79,17 +79,11 @@ public class PostList implements Serializable {
         }
     }
 
-    public void addPost(int id, List<Integer> pos) {
+    public void addPost(int id, int[] pos) {
         try {
             writeLock.lock();
-            List<Integer> post = posts.get(id);
-            if (post == null) {
-                post = new ArrayList<>();
-                posts.put(id, post);
-                size += 8; // 4 bytes for docID and 4 bytes for num of positions
-            }
-            post.addAll(pos);
-            size += 4 * pos.size(); // 4 bytes for each pos
+            posts.put(id, IntBuffer.fromArray(pos));
+            size += 8 + 4 * pos.length; // 4 bytes for each pos
         } finally {
             writeLock.unlock();
         }
@@ -100,13 +94,13 @@ public class PostList implements Serializable {
 
         try {
             writeLock.lock();
-            for (Map.Entry<Integer, List<Integer>> post: posts.entrySet()) {
-                List<Integer> positions = post.getValue();
-                Collections.sort(positions);
+            for (Map.Entry<Integer, IntBuffer> post: posts.entrySet()) {
+                IntBuffer positions = post.getValue();
 
                 byteBuffer.putInt(post.getKey()); // docID
                 byteBuffer.putInt(positions.size()); // num of positions
-                for (int pos: positions) {
+                for (int pos: positions.toArr()) {
+                    if (pos != 0)
                     byteBuffer.putInt(pos); // position
                 }
             }
@@ -120,8 +114,8 @@ public class PostList implements Serializable {
     public void synch(DocumentStore documentStore) {
         try {
             writeLock.lock();
-            Iterator<Map.Entry<Integer, List<Integer>>> it = posts.entrySet().iterator();
-            Map.Entry<Integer, List<Integer>> entry;
+            Iterator<Map.Entry<Integer, IntBuffer>> it = posts.entrySet().iterator();
+            Map.Entry<Integer, IntBuffer> entry;
             while(it.hasNext()) {
                 entry = it.next();
                 if (documentStore.getSegmentId(entry.getKey()) != getSegmentId()) {
@@ -143,20 +137,20 @@ public class PostList implements Serializable {
         try {
             readLock.lock();
 
-            Iterator<Map.Entry<Integer, List<Integer>>> thisIt = posts.entrySet().iterator();
-            Iterator<Map.Entry<Integer, List<Integer>>> thatIt = that.posts.entrySet().iterator();
-            Map.Entry<Integer, List<Integer>> thisEntry = thisIt.next();
-            Map.Entry<Integer, List<Integer>> thatEntry = thatIt.next();
+            Iterator<Map.Entry<Integer, IntBuffer>> thisIt = posts.entrySet().iterator();
+            Iterator<Map.Entry<Integer, IntBuffer>> thatIt = that.posts.entrySet().iterator();
+            Map.Entry<Integer, IntBuffer> thisEntry = thisIt.next();
+            Map.Entry<Integer, IntBuffer> thatEntry = thatIt.next();
 
             while(thisIt.hasNext() && thatIt.hasNext()) {
                 thisDocId = thisEntry.getKey();
                 thatDocId = thatEntry.getKey();
 
                 if (thisDocId < thatDocId) {
-                    res.addPost(thisDocId, thisEntry.getValue());
+                    res.addPost(thisDocId, thisEntry.getValue().toArr());
                     thisEntry = thisIt.next();
                 } else if (thisDocId > thatDocId) {
-                    res.addPost(thatDocId, thatEntry.getValue());
+                    res.addPost(thatDocId, thatEntry.getValue().toArr());
                     thatEntry = thatIt.next();
                 } else {
                     // not likely to happen
@@ -188,7 +182,7 @@ public class PostList implements Serializable {
         return res;
     }
 
-    private static List<Integer> mergeLists(List<Integer> list1, List<Integer> list2) {
+    private static IntBuffer mergeLists(IntBuffer list1, IntBuffer list2) {
         if (list1.get(list1.size() - 1) > list2.get(list2.size() - 1)) {
             return merge(list1, list2);
         } else {
@@ -196,7 +190,7 @@ public class PostList implements Serializable {
         }
     }
 
-    private static List<Integer> merge(List<Integer> list1, List<Integer> list2) {
+    private static IntBuffer merge(IntBuffer list1, IntBuffer list2) {
         List<Integer> res = new ArrayList<>();
         int list1pos = 0;
         int list2pos = 0;
@@ -212,7 +206,7 @@ public class PostList implements Serializable {
             }
         }
 
-        res.addAll(list1.subList(list1pos, list1.size()));
+        res.addAll(list1.subArry(list1pos, list1.size()));
         return res;
     }
 

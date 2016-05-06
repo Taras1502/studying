@@ -241,7 +241,7 @@ public class MemorySegment implements Serializable {
                 index.addToken(e.getKey(), discSegment, pos);
                 pos += postList.length + INT_SIZE;
             }
-            segmentDictionary = null;
+            segmentDictionary.clear();
             return discSegment;
         } catch (IOException e) {
             e.printStackTrace();
