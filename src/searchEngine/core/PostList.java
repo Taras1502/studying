@@ -16,7 +16,7 @@ public class PostList implements Serializable {
     private static final int MIN_BUFF_SIZE = 5;
     private int segId;
     private int size;
-    private Map<Integer, IntBuffer> posts;
+    private IntMap posts;
 
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
     private final ReentrantReadWriteLock.ReadLock readLock = lock.readLock();
@@ -24,7 +24,7 @@ public class PostList implements Serializable {
 
     public PostList(int segId) {
         this.segId = segId;
-        posts = new TreeMap<>();
+        posts = IntMap.allocate();
         size = 0;
     }
 
@@ -40,7 +40,7 @@ public class PostList implements Serializable {
                 int p = byteBuffer.getInt();
                 positions.add(p);
             }
-            postList.posts.put(docId, positions);
+//            postList.posts.add(docId, positions);
         }
         return postList;
     }
@@ -63,16 +63,17 @@ public class PostList implements Serializable {
         }
     }
 
-    public void addPost(int id, Integer pos) {
+    public void addPost(int id, int pos) {
         try {
+
             writeLock.lock();
             IntBuffer post = posts.get(id);
             if (post == null) {
-                post = IntBuffer.allocate();
-                posts.put(id, post);
+//                post = IntBuffer.allocate();
+//                posts.add(id, pos);
                 size += 8; // 4 bytes for docID and 4 bytes for num of positions
             }
-            post.add(pos);
+            posts.add(id, pos);
             size += 4; // 4 bytes for pos
         } finally {
             writeLock.unlock();
@@ -82,7 +83,7 @@ public class PostList implements Serializable {
     public void addPost(int id, int[] pos) {
         try {
             writeLock.lock();
-            posts.put(id, IntBuffer.fromArray(pos));
+//            posts.put(id, IntBuffer.fromArray(pos));
             size += 8 + 4 * pos.length; // 4 bytes for each pos
         } finally {
             writeLock.unlock();
@@ -94,16 +95,15 @@ public class PostList implements Serializable {
 
         try {
             writeLock.lock();
-            for (Map.Entry<Integer, IntBuffer> post: posts.entrySet()) {
-                IntBuffer positions = post.getValue();
-
-                byteBuffer.putInt(post.getKey()); // docID
-                byteBuffer.putInt(positions.size()); // num of positions
-                for (int pos: positions.toArr()) {
-                    if (pos != 0)
-                    byteBuffer.putInt(pos); // position
+            for (IntBuffer post: posts.toArr()) {
+                if (post != null) {
+                    for (int pos : post.toArr()) {
+                        if (pos != 0)
+                            byteBuffer.putInt(pos); // position
+                    }
                 }
             }
+
         } finally {
             writeLock.unlock();
         }
@@ -114,12 +114,13 @@ public class PostList implements Serializable {
     public void synch(DocumentStore documentStore) {
         try {
             writeLock.lock();
-            Iterator<Map.Entry<Integer, IntBuffer>> it = posts.entrySet().iterator();
-            Map.Entry<Integer, IntBuffer> entry;
-            while(it.hasNext()) {
-                entry = it.next();
-                if (documentStore.getSegmentId(entry.getKey()) != getSegmentId()) {
-                    it.remove();
+
+            IntBuffer[] array = posts.toArr();
+            IntBuffer post;
+            int i = 0;
+            while ((post = array[i]) != null) {
+                if (!documentStore.getSegmentId(post.get(0)).contains(segId)) {
+                    posts.remove(i);
                 }
             }
         } finally {
@@ -128,58 +129,58 @@ public class PostList implements Serializable {
     }
 
     public PostList mergePostList(PostList that, DocumentStore documentStore, int newSegId) {
-        synch(documentStore);
-        that.synch(documentStore);
+//        synch(documentStore);
+//        that.synch(documentStore);
+//
+//        PostList res = new PostList(newSegId);
+//        int thisDocId;
+//        int thatDocId;
+//        try {
+//            readLock.lock();
+//
+//            Iterator<Map.Entry<Integer, IntBuffer>> thisIt = posts.entrySet().iterator();
+//            Iterator<Map.Entry<Integer, IntBuffer>> thatIt = that.posts.entrySet().iterator();
+//            Map.Entry<Integer, IntBuffer> thisEntry = thisIt.next();
+//            Map.Entry<Integer, IntBuffer> thatEntry = thatIt.next();
+//
+//            while(thisIt.hasNext() && thatIt.hasNext()) {
+//                thisDocId = thisEntry.getKey();
+//                thatDocId = thatEntry.getKey();
+//
+//                if (thisDocId < thatDocId) {
+//                    res.addPost(thisDocId, thisEntry.getValue().toArr());
+//                    thisEntry = thisIt.next();
+//                } else if (thisDocId > thatDocId) {
+//                    res.addPost(thatDocId, thatEntry.getValue().toArr());
+//                    thatEntry = thatIt.next();
+//                } else {
+//                    // not likely to happen
+//                    res.addPost(thisDocId, mergeLists(thisEntry.getValue(), thatEntry.getValue()));
+//                    thisEntry = thisIt.next();
+//                    thatEntry = thatIt.next();
+//                }
+//            }
+//
+//            Iterator<Map.Entry<Integer, List<Integer>>> remaining;
+//            if (thisIt.hasNext()) {
+//                remaining = thisIt;
+//            } else if (thatIt.hasNext()){
+//                remaining = thatIt;
+//            } else {
+//                return res;
+//            }
+//
+//            Map.Entry<Integer, List<Integer>> remainingEntry;
+//            while(remaining.hasNext()) {
+//                remainingEntry = remaining.next();
+//                res.addPost(remainingEntry.getKey(), remainingEntry.getValue());
+//            }
+//
+//        } finally {
+//            readLock.unlock();
+//        }
 
-        PostList res = new PostList(newSegId);
-        int thisDocId;
-        int thatDocId;
-        try {
-            readLock.lock();
-
-            Iterator<Map.Entry<Integer, IntBuffer>> thisIt = posts.entrySet().iterator();
-            Iterator<Map.Entry<Integer, IntBuffer>> thatIt = that.posts.entrySet().iterator();
-            Map.Entry<Integer, IntBuffer> thisEntry = thisIt.next();
-            Map.Entry<Integer, IntBuffer> thatEntry = thatIt.next();
-
-            while(thisIt.hasNext() && thatIt.hasNext()) {
-                thisDocId = thisEntry.getKey();
-                thatDocId = thatEntry.getKey();
-
-                if (thisDocId < thatDocId) {
-                    res.addPost(thisDocId, thisEntry.getValue().toArr());
-                    thisEntry = thisIt.next();
-                } else if (thisDocId > thatDocId) {
-                    res.addPost(thatDocId, thatEntry.getValue().toArr());
-                    thatEntry = thatIt.next();
-                } else {
-                    // not likely to happen
-                    res.addPost(thisDocId, mergeLists(thisEntry.getValue(), thatEntry.getValue()));
-                    thisEntry = thisIt.next();
-                    thatEntry = thatIt.next();
-                }
-            }
-
-            Iterator<Map.Entry<Integer, List<Integer>>> remaining;
-            if (thisIt.hasNext()) {
-                remaining = thisIt;
-            } else if (thatIt.hasNext()){
-                remaining = thatIt;
-            } else {
-                return res;
-            }
-
-            Map.Entry<Integer, List<Integer>> remainingEntry;
-            while(remaining.hasNext()) {
-                remainingEntry = remaining.next();
-                res.addPost(remainingEntry.getKey(), remainingEntry.getValue());
-            }
-
-        } finally {
-            readLock.unlock();
-        }
-
-        return res;
+        return null;
     }
 
     private static IntBuffer mergeLists(IntBuffer list1, IntBuffer list2) {
@@ -191,23 +192,23 @@ public class PostList implements Serializable {
     }
 
     private static IntBuffer merge(IntBuffer list1, IntBuffer list2) {
-        List<Integer> res = new ArrayList<>();
-        int list1pos = 0;
-        int list2pos = 0;
-        while (list2pos < list2.size()) {
-            if (list1.get(list1pos) < list2.get(list2pos)) {
-                res.add(list1.get(list1pos++));
-            } else if (list1.get(list1pos) > list2.get(list2pos)) {
-                res.add(list2.get(list2pos++));
-            } else {
-                res.add(list1.get(list1pos));
-                list1pos++;
-                list2pos++;
-            }
-        }
-
-        res.addAll(list1.subArry(list1pos, list1.size()));
-        return res;
+//        List<Integer> res = new ArrayList<>();
+//        int list1pos = 0;
+//        int list2pos = 0;
+//        while (list2pos < list2.size()) {
+//            if (list1.get(list1pos) < list2.get(list2pos)) {
+//                res.add(list1.get(list1pos++));
+//            } else if (list1.get(list1pos) > list2.get(list2pos)) {
+//                res.add(list2.get(list2pos++));
+//            } else {
+//                res.add(list1.get(lprivate IntMap posts;ist1pos));
+//                list1pos++;
+//                list2pos++;
+//            }
+//        }
+//
+//        res.addAll(list1.subArry(list1pos, list1.size()));
+        return null;
     }
 
     @Override

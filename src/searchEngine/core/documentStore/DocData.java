@@ -1,29 +1,34 @@
 package searchEngine.core.documentStore;
 
+import searchEngine.core.IntBuffer;
+
 /**
  * Created by macbookpro on 4/27/16.
  */
 public class DocData {
-    private int segmentId;
+    private IntBuffer segmentId;
     private long position;
-    private boolean updated;
 
     public DocData() {
-        updated = false;
+        segmentId = IntBuffer.allocate();
     }
 
-    public DocData(int segmentId, long position) {
-        this.segmentId = segmentId;
+    public DocData(IntBuffer segmentIds, long position) {
+        this.segmentId = segmentIds;
         this.position = position;
     }
 
-    public int getSegmentId() {
+    public IntBuffer getSegmentId() {
         return segmentId;
     }
 
-    public void setSegmentId(int segmentId) {
-        this.segmentId = segmentId;
-        updated = true;
+    public void resetSegmentId(int segmentId) {
+        this.segmentId = IntBuffer.allocate();
+        this.segmentId.add(segmentId);
+    }
+
+    public void addSegmentId(int segmentId) {
+        this.segmentId.add(segmentId);
     }
 
     public long getPosition() {
@@ -34,11 +39,4 @@ public class DocData {
         this.position = position;
     }
 
-    public boolean isUpdated() {
-        return updated;
-    }
-
-    public void setUpdated(boolean updated) {
-        this.updated = updated;
-    }
 }

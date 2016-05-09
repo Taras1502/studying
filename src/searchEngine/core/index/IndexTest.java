@@ -14,10 +14,10 @@ import java.util.concurrent.*;
 public class IndexTest {
     public static void main(String[] args) {
         ExecutorService executorService = Executors.newFixedThreadPool(2);
-        File testDir = new File("D:/docs");
+        File testDir = new File("/Users/macbookpro/Desktop/test");
 
 
-        Index index = Index.create("D:/workingDir");
+        Index index = Index.create("/Users/macbookpro/Desktop/workingDir");
         DocumentStore documentStore = index.getDocumentStore();
 
 
@@ -29,7 +29,7 @@ public class IndexTest {
                     try {
                         MemorySegment memorySegment = futureSegment.get();
                         int docId1 = documentStore.registerDocument(f.getPath(), memorySegment.getId());
-                        IndexTask t1 = new IndexTask(memorySegment, f.getPath(), docId1);
+                        IndexTask t1 = new IndexTask(index, documentStore, f.getPath());
                         executorService.submit(t1);
                     } catch (InterruptedException | ExecutionException e) {
                         e.printStackTrace();
@@ -53,6 +53,7 @@ public class IndexTest {
 
         new Thread(search).start();
         new Thread(i).start();
-        
+
+
     }
 }
