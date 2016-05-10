@@ -41,7 +41,7 @@ public class PostList implements Serializable {
 //                System.out.println("pos " + p);
                 positions.add(p);
             }
-            System.out.println("fromBytes: " + docId + " " + positions.toString());
+//            System.out.println("fromBytes: " + docId + " " + positions.toString());
             postList.posts.add(docId, positions);
         }
         return postList;
@@ -96,7 +96,6 @@ public class PostList implements Serializable {
     public byte[] toBytes() {
         ByteBuffer byteBuffer = ByteBuffer.allocate(size);
 
-        int tempSize = 0;
         try {
             writeLock.lock();
             for (IntBuffer post: posts.toArr()) {
@@ -110,11 +109,9 @@ public class PostList implements Serializable {
                     for (int i = 1; i < post.size(); i++) {
                         byteBuffer.putInt(post.get(i)); // positions
                     }
-
-                    tempSize += 2 * 4 + (post.size() - 1) * 4;
                 }
             }
-            System.out.println("toBytes: " + size + " " + tempSize);
+
         } finally {
             writeLock.unlock();
         }

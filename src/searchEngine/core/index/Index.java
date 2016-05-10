@@ -139,14 +139,17 @@ public class Index {
         try {
             discSegReadLock.lock();
             if (discRes != null) {
+                System.out.println(discRes.toString());
                 int segIdIndex = 0;
                 int posIndex = 1;
                 while(posIndex < discRes.size()) {
-                    DiscSegment discSegment = discSegments.get(discRes.get(segIdIndex++));
+                    DiscSegment discSegment = discSegments.get(discRes.get(segIdIndex));
                     if (discSegment != null && discSegment.isSearchable()) {
-                        PostList postList = discSegment.getPostList(discRes.get(posIndex++));
+                        PostList postList = discSegment.getPostList(discRes.get(posIndex));
                         postLists.add(postList);
                     }
+                    segIdIndex += 2;
+                    posIndex += 2;
                 }
             }
         } finally {
