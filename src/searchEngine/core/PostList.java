@@ -95,19 +95,16 @@ public class PostList implements Serializable {
 
     public byte[] toBytes() {
         ByteBuffer byteBuffer = ByteBuffer.allocate(size);
-
         try {
             writeLock.lock();
-            for (IntBuffer post: posts.toArr()) {
+            for (int i = 0; i < posts.size(); i++) {
+                IntBuffer post = posts.get(i);
                 if (post != null) {
                     int di = post.get(0);
-                    if (di > 1380) {
-                        System.out.println("writing " + post.toString());
-                    }
                     byteBuffer.putInt(di); // docId
                     byteBuffer.putInt(post.size() - 1); // pos num
-                    for (int i = 1; i < post.size(); i++) {
-                        byteBuffer.putInt(post.get(i)); // positions
+                    for (int j = 1; j < post.size(); j++) {
+                        byteBuffer.putInt(post.get(j)); // positions
                     }
                 }
             }
@@ -122,13 +119,12 @@ public class PostList implements Serializable {
     public void synch(DocumentStore documentStore) {
         try {
             writeLock.lock();
-
-            IntBuffer[] array = posts.toArr();
-            IntBuffer post;
-            int i = 0;
-            while ((post = array[i]) != null) {
-                if (!documentStore.getSegmentId(post.get(0)).contains(segId)) {
-                    posts.remove(i);
+            for (int i = 0; i < posts.size(); i++) {
+                IntBuffer post = posts.get(i);
+                if (post != null) {
+                    if (!documentStore.getSegmentId(post.get(0)).contains(segId)){
+                        posts.remove(i);
+                    }
                 }
             }
         } finally {
@@ -137,85 +133,19 @@ public class PostList implements Serializable {
     }
 
     public PostList mergePostList(PostList that, DocumentStore documentStore, int newSegId) {
-//        synch(documentStore);
-//        that.synch(documentStore);
-//
-//        PostList res = new PostList(newSegId);
-//        int thisDocId;
-//        int thatDocId;
-//        try {
-//            readLock.lock();
-//
-//            Iterator<Map.Entry<Integer, IntBuffer>> thisIt = posts.entrySet().iterator();
-//            Iterator<Map.Entry<Integer, IntBuffer>> thatIt = that.posts.entrySet().iterator();
-//            Map.Entry<Integer, IntBuffer> thisEntry = thisIt.next();
-//            Map.Entry<Integer, IntBuffer> thatEntry = thatIt.next();
-//
-//            while(thisIt.hasNext() && thatIt.hasNext()) {
-//                thisDocId = thisEntry.getKey();
-//                thatDocId = thatEntry.getKey();
-//
-//                if (thisDocId < thatDocId) {
-//                    res.addPost(thisDocId, thisEntry.getValue().toArr());
-//                    thisEntry = thisIt.next();
-//                } else if (thisDocId > thatDocId) {
-//                    res.addPost(thatDocId, thatEntry.getValue().toArr());
-//                    thatEntry = thatIt.next();
-//                } else {
-//                    // not likely to happen
-//                    res.addPost(thisDocId, mergeLists(thisEntry.getValue(), thatEntry.getValue()));
-//                    thisEntry = thisIt.next();
-//                    thatEntry = thatIt.next();
-//                }
-//            }
-//
-//            Iterator<Map.Entry<Integer, List<Integer>>> remaining;
-//            if (thisIt.hasNext()) {
-//                remaining = thisIt;
-//            } else if (thatIt.hasNext()){
-//                remaining = thatIt;
-//            } else {
-//                return res;
-//            }
-//
-//            Map.Entry<Integer, List<Integer>> remainingEntry;
-//            while(remaining.hasNext()) {
-//                remainingEntry = remaining.next();
-//                res.addPost(remainingEntry.getKey(), remainingEntry.getValue());
-//            }
-//
-//        } finally {
-//            readLock.unlock();
-//        }
+        synch(documentStore);
+        that.synch(documentStore);
 
-        return null;
-    }
+        PostList res = new PostList(newSegId);
+        try {
+            readLock.lock();
 
-    private static IntBuffer mergeLists(IntBuffer list1, IntBuffer list2) {
-        if (list1.get(list1.size() - 1) > list2.get(list2.size() - 1)) {
-            return merge(list1, list2);
-        } else {
-            return merge(list2, list1);
+            res.posts = posts.merge(that.posts);
+
+        } finally {
+            readLock.unlock();
         }
-    }
 
-    private static IntBuffer merge(IntBuffer list1, IntBuffer list2) {
-//        List<Integer> res = new ArrayList<>();
-//        int list1pos = 0;
-//        int list2pos = 0;
-//        while (list2pos < list2.size()) {
-//            if (list1.get(list1pos) < list2.get(list2pos)) {
-//                res.add(list1.get(list1pos++));
-//            } else if (list1.get(list1pos) > list2.get(list2pos)) {
-//                res.add(list2.get(list2pos++));
-//            } else {
-//                res.add(list1.get(lprivate IntMap posts;ist1pos));
-//                list1pos++;
-//                list2pos++;
-//            }
-//        }
-//
-//        res.addAll(list1.subArry(list1pos, list1.size()));
         return null;
     }
 

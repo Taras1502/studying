@@ -7,15 +7,15 @@ import java.util.Arrays;
  * Created by Taras.Mykulyn on 06.05.2016.
  */
 public class IntBuffer implements Serializable {
-    static transient final int DEFAULT_START_SIZE = 5;
-    int size = 0;
-    private int[] buff;
+    protected static transient final int DEFAULT_START_SIZE = 5;
+    protected int size = 0;
+    protected int[] buff;
 
-    private IntBuffer(int capacity) {
+    protected IntBuffer(int capacity) {
         buff = new int[capacity];
     }
 
-    private IntBuffer(int[] array) {
+    protected IntBuffer(int[] array) {
         buff = array;
         size = array.length;
     }
@@ -40,12 +40,19 @@ public class IntBuffer implements Serializable {
     }
 
     public void append(int... elements) {
-        if (size + elements.length >= buff.length) {
-            changeCapacity(size + elements.length + size / 4 + 1);
-        }
-        System.arraycopy(elements, 0, buff, size, elements.length);
-        size += elements.length;
+        append(elements, 0, elements.length);
     }
+
+    public void append(int[] source, int start, int end) {
+        int numOfElements = end - start;
+        if (size + numOfElements >= buff.length) {
+            changeCapacity(size + numOfElements + size / 4 + 1);
+        }
+        System.arraycopy(source, start, buff, size, numOfElements);
+        size += numOfElements;
+    }
+
+
 
     public int get(int ind) {
         if (ind < size) {
@@ -108,10 +115,10 @@ public class IntBuffer implements Serializable {
         IntBuffer intBuffer = IntBuffer.allocate(2);
         System.out.println(intBuffer.toString());
 
-        intBuffer.add(3);
+        intBuffer.append(3, 4);
         System.out.println(intBuffer.toString());
 
-        intBuffer.add(2);
+        intBuffer.append(2, 0);
         System.out.println(intBuffer.toString());
 
         intBuffer.add(1);

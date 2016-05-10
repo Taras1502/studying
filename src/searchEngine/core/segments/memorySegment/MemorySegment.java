@@ -1,6 +1,7 @@
 package searchEngine.core.segments.memorySegment;
 
 
+import searchEngine.core.Logger;
 import searchEngine.core.PostList;
 import searchEngine.core.index.Index;
 import searchEngine.core.segments.discSegment.DiscSegment;
@@ -18,7 +19,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  */
 
 public class MemorySegment implements Serializable {
-    private static final int MAX_SIZE = 7024000;
+    private static final int MAX_SIZE = 102400;
     private final String MEMORY_SEGMENT_PATH = "%s/%s.mem";
     private static final int INT_SIZE = 4;
 
@@ -31,9 +32,6 @@ public class MemorySegment implements Serializable {
     private volatile boolean searchable;
     private volatile boolean writable;
     private volatile boolean closing;
-
-    private transient DataOutputStream buffer;
-    private transient int bufferSize;
 
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
     private final ReentrantReadWriteLock.ReadLock readLock = lock.readLock();
@@ -179,46 +177,13 @@ public class MemorySegment implements Serializable {
         }
     }
 
-
-    public void createBuffer(String path) {
-        try {
-            BufferedOutputStream bufferOS = new BufferedOutputStream(new FileOutputStream(path));
-            buffer = new DataOutputStream(bufferOS);
-            bufferSize = 0;
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void closeBuffer() {
-        try {
-            buffer.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public int appendBuffer(PostList postList) {
-        try {
-            byte[] bytes = postList.toBytes();
-            buffer.writeInt(bytes.length); // postList size (int)
-            buffer.write(bytes); // postList bytes
-            bufferSize += bytes.length + INT_SIZE;
-
-            return bufferSize;
-        } catch (IOException e) {
-            e.printStackTrace();
-            return -1;
-        }
-    }
-
     public DiscSegment writeToDisc(Index index, int id) {
         BufferedOutputStream indOS;
         DataOutputStream indDOS = null;
 
         int pos = 0;
         try {
-            DiscSegment discSegment = new DiscSegment(id, workingDir);
+            DiscSegment discSegment = DiscSegment.create(id, workingDir);
             discSegment.setSearchable(false);
 
             readLock.lock();
@@ -237,6 +202,7 @@ public class MemorySegment implements Serializable {
             }
             segmentDictionary.clear();
             discSegment.setSearchable(true);
+            Logger.info(getClass(), "FINISHED WRITING MEMORY SEGMENT WITH ID " + id);
             return discSegment;
         } catch (IOException e) {
             e.printStackTrace();

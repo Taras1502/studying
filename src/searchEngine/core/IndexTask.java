@@ -47,6 +47,9 @@ public class IndexTask implements Runnable {
                 while (stringTokenizer.hasMoreTokens()) {
                     String token = stringTokenizer.nextToken().toLowerCase();
                     if (TokenFilter.needToIndex(token)) {
+                        if (token.equals("test")) {
+                            System.out.println(token);
+                        }
                         while (!memorySegment.addPostList(token, docId, pos)) {
                             memorySegment = getMemorySegment();
                             if (memorySegment != null) {

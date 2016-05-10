@@ -18,8 +18,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  */
 public class Index {
     private static final int THREAD_NUM = 2; // TODO: need to configure dynamically
-    private static final long MAX_MEM_SEGMENT_SIZE = 1024000; // 1 mb
-    private static final int MAX_DISC_SEG_NUM = 1000; // 10 mb
+    private static final long MAX_MEM_SEGMENT_SIZE = 102400; // 1 mb
+    private static final int MAX_DISC_SEG_NUM = 2; // 10 mb
 
     private final String DISC_SEGMENTS_FILE_PATH;
     private final String MEM_SEGMENTS_FILE_PATH;
@@ -28,7 +28,7 @@ public class Index {
     private final String workingDir;
 
     private DocumentStore documentStore;
-    private Map<String, IntBuffer> dictionary;
+    private Map<String, TokenData> dictionary;
     private boolean updated;
 
     private Map<Integer, DiscSegment> discSegments;
@@ -95,13 +95,12 @@ public class Index {
     public void addToken(String token, DiscSegment discSegment, int pos) {
         try {
             dicWriteLock.lock();
-            IntBuffer res = dictionary.get(token);
+            TokenData res = dictionary.get(token);
             if (res == null) {
-                res = IntBuffer.allocate();
+                res = TokenData.allocate();
                 dictionary.put(token, res);
             }
-            res.add(discSegment.getId());
-            res.add(pos);
+            res.append(discSegment.getId(), pos);
             updated = true;
         } finally {
             dicWriteLock.unlock();
@@ -128,24 +127,25 @@ public class Index {
         }
 
         // getting post lists from disc segments
-        IntBuffer discRes;
+        TokenData tokenData;
         try {
             dicReadLock.lock();
-            discRes = dictionary.get(token);
+            tokenData = dictionary.get(token);
+            System.out.println(dictionary.toString());
         } finally {
             dicReadLock.unlock();
         }
 
         try {
             discSegReadLock.lock();
-            if (discRes != null) {
-                System.out.println(discRes.toString());
+            if (tokenData != null) {
+                System.out.println(tokenData.toString());
                 int segIdIndex = 0;
                 int posIndex = 1;
-                while(posIndex < discRes.size()) {
-                    DiscSegment discSegment = discSegments.get(discRes.get(segIdIndex));
+                while(posIndex < tokenData.size()) {
+                    DiscSegment discSegment = discSegments.get(tokenData.get(segIdIndex));
                     if (discSegment != null && discSegment.isSearchable()) {
-                        PostList postList = discSegment.getPostList(discRes.get(posIndex));
+                        PostList postList = discSegment.getPostList(tokenData.get(posIndex));
                         postLists.add(postList);
                     }
                     segIdIndex += 2;
@@ -197,21 +197,36 @@ public class Index {
 
         // disc segment merge logic
         try {
-            discSegReadLock.lock();
-            if (discSegments.size() >= MAX_DISC_SEG_NUM - 1) {
+            discSegWriteLock.lock();
+            if (discSegments.size() >= MAX_DISC_SEG_NUM) {
                 Iterator<DiscSegment> discSegIt = discSegments.values().iterator();
-                final DiscSegment discSeg1 = discSegIt.next();
-                final DiscSegment discSeg2 = discSegIt.next();
-                executorService.submit(new Runnable() {
-                    @Override
-                    public void run() {
-                        mergeDiscSegments(discSeg1, discSeg2);
-                    }
-                });
-                Logger.info(getClass(), "Submitting task to merge disc segments with ids " + discSeg1.getId() + " " + discSeg2.getId());
+                DiscSegment discSeg1 = null;
+                DiscSegment discSeg2 = null;
+                while (discSegIt.hasNext()) {
+                    discSeg1 = discSegIt.next();
+                    if (!discSeg1.isInMerge()) break;
+                }
+                while (discSegIt.hasNext()) {
+                    discSeg2 = discSegIt.next();
+                    if (!discSeg2.isInMerge()) break;
+                }
+                final DiscSegment d1 = discSeg1;
+                final DiscSegment d2 = discSeg2;
+                if (d1 != null && d2 != null) {
+                    discSeg1.setInMerge(true);
+                    discSeg2.setInMerge(true);
+                    Logger.info(getClass(), "Submitting task to merge disc segments with ids " + discSeg1.getId() + " " + discSeg2.getId());
+                    executorService.submit(new Runnable() {
+                        @Override
+                        public void run() {
+                            mergeDiscSegments(d1, d2);
+                        }
+                    });
+
+                }
             }
         } finally {
-            discSegReadLock.unlock();
+            discSegWriteLock.unlock();
         }
 
         return null;
@@ -251,52 +266,71 @@ public class Index {
     }
 
     private void mergeDiscSegments(DiscSegment seg1, DiscSegment seg2) {
-        MemorySegment memorySegment = MemorySegment.create(lastIdTaken.incrementAndGet(), workingDir);
-        memorySegment.setWritable(false);
-        try {
-            memSegWriteLock.lock();
-            memorySegments.put(memorySegment.getId(), memorySegment);
-        } finally {
-            memSegWriteLock.unlock();
-        }
+        DiscSegment discSegment = DiscSegment.asBuffer(workingDir);
 
         PostList postList1;
         PostList postList2;
         PostList res;
-        for (Map.Entry<String, IntBuffer> entry: dictionary.entrySet()) {
-            // disc segments merge logic
-            res = null;
-            IntBuffer tokenData = entry.getValue();
-            int pos1 = tokenData.get(seg1.getId());
-            Integer pos2 = tokenData.get(seg2.getId());
-            if (pos1 != -1) {
-                postList1 = seg1.getPostList(pos1);
-                if (pos2 != null) {
-                    postList2 = seg2.getPostList(pos2);
-                    res = postList1.mergePostList(postList2, documentStore, seg1.getId());
-                } else {
-                    postList1.synch(documentStore);
-                    res = postList1;
-                }
-            } else if (pos2 != null) {
-                res = seg2.getPostList(pos2);
-                res.synch(documentStore);
-            }
+        try {
+            dicReadLock.lock();
 
-            // new post list write logic
-            memorySegment.addPostList(entry.getKey(), res);
-            try {
-                dicWriteLock.lock();
-                updated = true;
-//                tokenData.remove(seg1);
-//                tokenData.remove(seg2);
-            } finally {
-                dicWriteLock.unlock();
+            System.out.println(dictionary.entrySet().size());
+
+            for (Map.Entry<String, TokenData> entry : dictionary.entrySet()) {
+                System.out.println(entry.getValue().toString());
+                // disc segments merge logic
+                res = null;
+                TokenData tokenData = entry.getValue();
+                int pos1 = tokenData.getPosition(seg1.getId());
+                int pos2 = tokenData.getPosition(seg2.getId());
+                System.out.println(pos1 + " " + pos2);
+                if (pos1 != -1) {
+                    postList1 = seg1.getPostList(pos1);
+                    if (pos2 != -1) {
+                        postList2 = seg2.getPostList(pos2);
+                        res = postList1.mergePostList(postList2, documentStore, seg1.getId());
+                    } else {
+                        postList1.synch(documentStore);
+                        res = postList1;
+                    }
+                } else if (pos2 != -1) {
+                    res = seg2.getPostList(pos2);
+                    res.synch(documentStore);
+                } else {
+                    System.out.println("jkjjjjjj");
+                    continue;
+                }
+
+                System.out.println(res == null);
+                // new post list write logic
+                int pos = discSegment.appendBuffer(res);
+                System.out.println("p" + pos);
+                System.out.println("discsegs " + discSegments.toString());
+                try {
+//                    dicWriteLock.lock();
+                    updated = true;
+//                tokenData.removeDataForSeg(seg1.getId());
+                    tokenData.removeDataForSeg(seg2.getId());
+                    tokenData.setPosition(seg1.getId(), pos);
+                } finally {
+//                    dicWriteLock.unlock();
+                }
             }
+        } finally {
+            dicReadLock.unlock();
         }
+        seg1.removeDiscFile();
+        seg2.removeDiscFile();
 
         // new disc segment write logic
-        writeMemorySegment(memorySegment);
+        discSegment = discSegment.closeBuffer(seg1.getId());
+        try {
+            discSegWriteLock.lock();
+            discSegments.remove(seg2.getId());
+            discSegments.put(seg1.getId(), discSegment);
+        } finally {
+            discSegWriteLock.unlock();
+        }
     }
 
     /*
@@ -387,7 +421,7 @@ public class Index {
             memorySegments = (Map<Integer, MemorySegment>) memOIS.readObject();
 
             dictionaryOIS = new ObjectInputStream(new FileInputStream(DICTIONARY_FILE_PATH));
-            dictionary = (Map<String, IntBuffer>) dictionaryOIS.readObject();
+            dictionary = (Map<String, TokenData>) dictionaryOIS.readObject();
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
         } finally {

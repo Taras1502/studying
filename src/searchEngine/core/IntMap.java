@@ -77,7 +77,6 @@ public class IntMap implements Serializable {
     public int getIndex(int docId) {
         for (int i = 0; i < size; i++) {
             if (values[i].get(0) == docId) {
-//                System.out.println(docId + " found");
                 return i;
             }
         }
@@ -104,6 +103,53 @@ public class IntMap implements Serializable {
 
     public int size() {
         return size;
+    }
+
+    public IntMap merge(IntMap that) {
+        IntMap res = IntMap.allocate(size);
+
+        int thisPos = 0;
+        int thatPos = 0;
+
+        int thisDocId;
+        int thatDocId;
+        while(thisPos < size && thatPos < that.size) {
+            thisDocId = values[thisPos].get(0);
+            thatDocId = that.values[thatPos].get(0);
+
+            if (thisDocId < thatDocId) {
+                res.addEntry(values[thisPos++]);
+            } else if (thisDocId > thatDocId) {
+                res.addEntry(that.values[thatPos++]);
+            } else {
+                if (values[thisPos].get(1) < that.values[thatPos].get(1)) {
+                    values[thisPos].append(that.values[thatPos].toArr(), 1, that.size);
+                    res.addEntry(values[thisPos]);
+                } else {
+                    that.values[thatPos].append(values[thisPos].toArr(), 1, size);
+                    res.addEntry(that.values[thatPos]);
+                }
+                thisPos++;
+                thatPos++;
+            }
+        }
+
+        while (thisPos < size) {
+            res.addEntry(values[thisPos++]);
+        }
+
+        while (thatPos < size) {
+            res.addEntry(that.values[thatPos++]);
+        }
+        return res;
+    }
+
+
+    private void addEntry(IntBuffer entry) {
+        if (size == values.length) {
+            changeCapacity(size + size / 4 + 1);
+        }
+        values[size] = entry;
     }
 
     private void changeCapacity(int newCapacity) {
