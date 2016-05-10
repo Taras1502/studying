@@ -14,7 +14,7 @@ import java.util.concurrent.ExecutionException;
  * Created by Taras.Mykulyn on 26.04.2016.
  */
 public class IndexTask implements Runnable {
-    private static final String TOKEN_SPLITTERS = "[ .,:;\"\'{}()-+<>]+?";
+    private static final String TOKEN_SPLITTERS = " [ .,:;\"\'{}()-+<>]+?";
     private Index index;
     private searchEngine.core.documentStore.DocumentStore documentStore;
     private String filePath;
@@ -39,7 +39,6 @@ public class IndexTask implements Runnable {
             MemorySegment memorySegment = getMemorySegment();
 
             int docId = documentStore.registerDocument(filePath, memorySegment.getId());
-
             while(br.read(buff) != -1) {
                 sb = new StringBuilder(512);
                 sb.append(buff);
@@ -47,12 +46,14 @@ public class IndexTask implements Runnable {
                 StringTokenizer stringTokenizer = new StringTokenizer(sb.toString(), TOKEN_SPLITTERS);
                 while (stringTokenizer.hasMoreTokens()) {
                     String token = stringTokenizer.nextToken().toLowerCase();
-                    if (!TokenFilter.needToIndex(token)) continue;
-                    while (!memorySegment.addPostList(token, docId, pos++)) {
-                        memorySegment = getMemorySegment();
-                        if (memorySegment != null) {
-                            documentStore.addSegmentId(docId, memorySegment.getId());
+                    if (TokenFilter.needToIndex(token)) {
+                        while (!memorySegment.addPostList(token, docId, pos)) {
+                            memorySegment = getMemorySegment();
+                            if (memorySegment != null) {
+                                documentStore.addSegmentId(docId, memorySegment.getId());
+                            }
                         }
+                        pos++;
                     }
                 }
             }

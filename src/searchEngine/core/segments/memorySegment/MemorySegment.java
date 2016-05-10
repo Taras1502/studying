@@ -18,7 +18,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  */
 
 public class MemorySegment implements Serializable {
-    private static final int MAX_SIZE = 5024000;
+    private static final int MAX_SIZE = 7024000;
     private final String MEMORY_SEGMENT_PATH = "%s/%s.mem";
     private static final int INT_SIZE = 4;
 
@@ -26,8 +26,6 @@ public class MemorySegment implements Serializable {
     private String segmentPath;
     private volatile int id;
     private volatile long size;
-    private volatile long approxTakenSize;
-    private volatile int currentDocNumIndexing;
     private Map<String, PostList> segmentDictionary;
 
     private volatile boolean searchable;
@@ -50,8 +48,6 @@ public class MemorySegment implements Serializable {
         writable = true;
         closing = false;
         size = 0;
-        approxTakenSize = 0;
-        currentDocNumIndexing = 0;
     }
 
     public static MemorySegment create(int segmentId, String workingDir) {
@@ -223,6 +219,7 @@ public class MemorySegment implements Serializable {
         int pos = 0;
         try {
             DiscSegment discSegment = new DiscSegment(id, workingDir);
+            discSegment.setSearchable(false);
 
             readLock.lock();
             closing = true;
@@ -239,6 +236,7 @@ public class MemorySegment implements Serializable {
                 pos += postList.length + INT_SIZE;
             }
             segmentDictionary.clear();
+            discSegment.setSearchable(true);
             return discSegment;
         } catch (IOException e) {
             e.printStackTrace();

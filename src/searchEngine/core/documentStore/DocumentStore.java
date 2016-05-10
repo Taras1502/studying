@@ -82,6 +82,8 @@ public class DocumentStore {
                     updated = true;
                     Logger.info(getClass(), "Document already exists.. DocId: " + id);
                     return id;
+                } else {
+                    System.out.println(" No doc with id " + id);
                 }
             } finally {
                 writeLock.unlock();
@@ -89,7 +91,8 @@ public class DocumentStore {
         } else {
             try {
                 writeLock.lock();
-                int docId = ++lastUsedDocId;
+                lastUsedDocId++;
+                int docId = lastUsedDocId;
                 int docHash = docPath.hashCode();
                 long pos = writeDoc(docPath);
                 if (pos == -1) {
@@ -97,14 +100,14 @@ public class DocumentStore {
                 }
                 DocData docData = new DocData();
                 docData.addSegmentId(segmentId);
-                docData.setPosition(segmentId);
+                docData.setPosition(pos);
                 documents.put(docId, docData);
-                IntBuffer docIds = hashes.get(docId);
+                IntBuffer docIds = hashes.get(docHash);
                 if (docIds == null) {
                     docIds = IntBuffer.allocate(2);
-                    hashes.put(docId, docIds);
+                    hashes.put(docHash, docIds);
                 }
-                docIds.add(docHash);
+                docIds.add(docId);
                 Logger.info(getClass(), "Document has been registered.. DocId: " + docId + " Path: " + docPath);
                 return docId;
             } finally {
@@ -140,12 +143,11 @@ public class DocumentStore {
         try {
             readLock.lock();
             docs = hashes.get(fileHash);
-
             if (docs != null) {
-                for (int id : docs.toArr()) {
-                    String p = getDocPath(id);
+                for (int i = 0; i < docs.size(); i++) {
+                    String p = getDocPath(docs.get(i));
                     if (docPath.equalsIgnoreCase(p)) {
-                        return id;
+                        return docs.get(i);
                     }
                 }
             }
@@ -208,7 +210,6 @@ public class DocumentStore {
             readLock.lock();
             DocData docData = documents.get(docId);
             if (docData != null) {
-                System.out.println("docPath " + docId);
                 return readDocPath(docData.getPosition());
             } else {
                 return null;
@@ -249,7 +250,6 @@ public class DocumentStore {
                 docDataStore.seek(pos);
                 short pathLen = docDataStore.readShort();
                 byte[] pathBytes = new byte[pathLen];
-                System.out.println(pos + " pathLen " + pathLen);
                 docDataStore.read(pathBytes);
                 return new String(pathBytes);
             } catch (IOException e) {

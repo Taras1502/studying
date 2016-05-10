@@ -128,22 +128,31 @@ public class Index {
         }
 
         // getting post lists from disc segments
+        IntBuffer discRes;
         try {
             dicReadLock.lock();
-            IntBuffer discRes = dictionary.get(token);
-            if (discRes != null) {
-//                for (Map.Entry<DiscSegment, Integer> entry : discRes.entrySet()) {
-//                    PostList p = entry.getKey().getPostList(entry.getValue());
-//                    if (p != null) {
-//                        System.out.println("found new post list on disc");
-//                        postLists.add(p);
-//                    }
-//                }
-            }
+            discRes = dictionary.get(token);
         } finally {
             dicReadLock.unlock();
         }
-        System.out.println("res (search time = " + (System.currentTimeMillis() - start) + " " + postLists.size());
+
+        try {
+            discSegReadLock.lock();
+            if (discRes != null) {
+                int segIdIndex = 0;
+                int posIndex = 1;
+                while(posIndex < discRes.size()) {
+                    DiscSegment discSegment = discSegments.get(discRes.get(segIdIndex++));
+                    if (discSegment != null && discSegment.isSearchable()) {
+                        PostList postList = discSegment.getPostList(discRes.get(posIndex++));
+                        postLists.add(postList);
+                    }
+                }
+            }
+        } finally {
+            discSegReadLock.unlock();
+        }
+        System.out.println("res " + postLists.toString());
 
         postLists.clear();
         // TODO: implement an efficient mechanism of merging multiple post lists
@@ -219,16 +228,6 @@ public class Index {
     }
 
     private void writeMemorySegment(MemorySegment memorySegment) {
-        // committing
-//        commitDictionary();
-//        commitSegmentsData();
-//        while(memorySegment.isInProgress()) {
-//            try {
-//                Thread.sleep(1000);
-//            } catch (InterruptedException e) {
-//                e.printStackTrace();
-//            }
-//        }
         DiscSegment discSegment = memorySegment.writeToDisc(this, memorySegment.getId());
         // adding newly created disc segment
         try {

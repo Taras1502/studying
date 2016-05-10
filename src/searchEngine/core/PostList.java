@@ -38,9 +38,11 @@ public class PostList implements Serializable {
             IntBuffer positions = IntBuffer.allocate(positionsNum);
             for (int i = 0; i < positionsNum; i++) {
                 int p = byteBuffer.getInt();
+//                System.out.println("pos " + p);
                 positions.add(p);
             }
-//            postList.posts.add(docId, positions);
+            System.out.println("fromBytes: " + docId + " " + positions.toString());
+            postList.posts.add(docId, positions);
         }
         return postList;
     }
@@ -63,17 +65,18 @@ public class PostList implements Serializable {
         }
     }
 
-    public void addPost(int id, int pos) {
+    public void addPost(int docId, int pos) {
         try {
 
             writeLock.lock();
-            IntBuffer post = posts.get(id);
+            IntBuffer post = posts.get(docId);
             if (post == null) {
-//                post = IntBuffer.allocate();
-//                posts.add(id, pos);
                 size += 8; // 4 bytes for docID and 4 bytes for num of positions
+                posts.add(docId, pos);
+            } else {
+                post.add(pos);
             }
-            posts.add(id, pos);
+
             size += 4; // 4 bytes for pos
         } finally {
             writeLock.unlock();
@@ -93,17 +96,25 @@ public class PostList implements Serializable {
     public byte[] toBytes() {
         ByteBuffer byteBuffer = ByteBuffer.allocate(size);
 
+        int tempSize = 0;
         try {
             writeLock.lock();
             for (IntBuffer post: posts.toArr()) {
                 if (post != null) {
-                    for (int pos : post.toArr()) {
-                        if (pos != 0)
-                            byteBuffer.putInt(pos); // position
+                    int di = post.get(0);
+                    if (di > 1380) {
+                        System.out.println("writing " + post.toString());
                     }
+                    byteBuffer.putInt(di); // docId
+                    byteBuffer.putInt(post.size() - 1); // pos num
+                    for (int i = 1; i < post.size(); i++) {
+                        byteBuffer.putInt(post.get(i)); // positions
+                    }
+
+                    tempSize += 2 * 4 + (post.size() - 1) * 4;
                 }
             }
-
+            System.out.println("toBytes: " + size + " " + tempSize);
         } finally {
             writeLock.unlock();
         }

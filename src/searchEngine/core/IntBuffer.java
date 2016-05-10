@@ -1,6 +1,7 @@
 package searchEngine.core;
 
 import java.io.Serializable;
+import java.util.Arrays;
 
 /**
  * Created by Taras.Mykulyn on 06.05.2016.
@@ -10,8 +11,8 @@ public class IntBuffer implements Serializable {
     int size = 0;
     private int[] buff;
 
-    private IntBuffer(int size) {
-        buff = new int[size];
+    private IntBuffer(int capacity) {
+        buff = new int[capacity];
     }
 
     private IntBuffer(int[] array) {
@@ -36,6 +37,14 @@ public class IntBuffer implements Serializable {
             changeCapacity(size + size / 4 + 1);
         }
         buff[size++] = elem;
+    }
+
+    public void append(int... elements) {
+        if (size + elements.length >= buff.length) {
+            changeCapacity(size + elements.length + size / 4 + 1);
+        }
+        System.arraycopy(elements, 0, buff, size, elements.length);
+        size += elements.length;
     }
 
     public int get(int ind) {
@@ -88,5 +97,26 @@ public class IntBuffer implements Serializable {
         int[] temp = new int[newCapacity];
         System.arraycopy(buff, 0, temp, 0, buff.length);
         buff = temp;
+    }
+
+    @Override
+    public String toString() {
+        return Arrays.toString(buff);
+    }
+
+    public static void main(String[] args) {
+        IntBuffer intBuffer = IntBuffer.allocate(2);
+        System.out.println(intBuffer.toString());
+
+        intBuffer.add(3);
+        System.out.println(intBuffer.toString());
+
+        intBuffer.add(2);
+        System.out.println(intBuffer.toString());
+
+        intBuffer.add(1);
+        System.out.println(intBuffer.toString());
+
+
     }
 }
