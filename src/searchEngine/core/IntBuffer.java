@@ -52,9 +52,7 @@ public class IntBuffer implements Serializable {
         size += numOfElements;
     }
 
-
-
-    public int get(int ind) {
+    public int getByIndex(int ind) {
         if (ind < size) {
             return buff[ind];
         }
@@ -62,7 +60,7 @@ public class IntBuffer implements Serializable {
     }
 
     public boolean contains(int elem) {
-        return get(elem) != -1;
+        return getIndex(elem) != -1;
     }
 
     public int getIndex(int elem) {
@@ -112,6 +110,13 @@ public class IntBuffer implements Serializable {
     }
 
     public static void main(String[] args) {
+
+        int[] a = new int[4];
+        a[0] = 4;
+        a[1] = 5;
+        a[2] = 6;
+        a[3] = 7;
+
         IntBuffer intBuffer = IntBuffer.allocate(2);
         System.out.println(intBuffer.toString());
 
@@ -123,6 +128,9 @@ public class IntBuffer implements Serializable {
 
         intBuffer.add(1);
         System.out.println(intBuffer.toString());
+
+        intBuffer.append(a, 1, a.length);
+        System.out.println(intBuffer.toString() + " " + intBuffer.size());
 
 
     }

@@ -1,7 +1,6 @@
 package searchEngine.core;
 
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.Arrays;
 
 /**
@@ -46,7 +45,8 @@ public class IntMap implements Serializable {
             }
             values[size] = IntBuffer.allocate();
             values[size].add(docId);
-            values[size++].add(pos);
+            values[size].add(pos);
+            size += 1;
 
         }
     }
@@ -74,9 +74,13 @@ public class IntMap implements Serializable {
         return null;
     }
 
+    public IntBuffer getByIndex(int ind) {
+        return values[ind];
+    }
+
     public int getIndex(int docId) {
         for (int i = 0; i < size; i++) {
-            if (values[i].get(0) == docId) {
+            if (values[i].getByIndex(0) == docId) {
                 return i;
             }
         }
@@ -114,20 +118,24 @@ public class IntMap implements Serializable {
         int thisDocId;
         int thatDocId;
         while(thisPos < size && thatPos < that.size) {
-            thisDocId = values[thisPos].get(0);
-            thatDocId = that.values[thatPos].get(0);
+            thisDocId = values[thisPos].getByIndex(0);
+            thatDocId = that.values[thatPos].getByIndex(0);
 
             if (thisDocId < thatDocId) {
                 res.addEntry(values[thisPos++]);
             } else if (thisDocId > thatDocId) {
                 res.addEntry(that.values[thatPos++]);
             } else {
-                if (values[thisPos].get(1) < that.values[thatPos].get(1)) {
-                    values[thisPos].append(that.values[thatPos].toArr(), 1, that.size);
+                if (values[thisPos].getByIndex(1) < that.values[thatPos].getByIndex(1)) {
+                    System.out.println(values[thisPos].toString());
+                    System.out.println(that.values[thatPos].toString());
+                    values[thisPos].append(that.values[thatPos].toArr(), 1, that.values[thatPos].size);
                     res.addEntry(values[thisPos]);
-                } else {
-                    that.values[thatPos].append(values[thisPos].toArr(), 1, size);
+                } else if (values[thisPos].getByIndex(1) > that.values[thatPos].getByIndex(1)) {
+                    that.values[thatPos].append(values[thisPos].toArr(), 1, values[thisPos].size);
                     res.addEntry(that.values[thatPos]);
+                } else {
+                    System.out.println("WAS NOT EXPECTING");
                 }
                 thisPos++;
                 thatPos++;
@@ -138,7 +146,7 @@ public class IntMap implements Serializable {
             res.addEntry(values[thisPos++]);
         }
 
-        while (thatPos < size) {
+        while (thatPos < that.size) {
             res.addEntry(that.values[thatPos++]);
         }
         return res;
@@ -149,7 +157,7 @@ public class IntMap implements Serializable {
         if (size == values.length) {
             changeCapacity(size + size / 4 + 1);
         }
-        values[size] = entry;
+        values[size++] = entry;
     }
 
     private void changeCapacity(int newCapacity) {
@@ -164,16 +172,32 @@ public class IntMap implements Serializable {
         return Arrays.toString(values);
     }
 
+    public void print() {
+        System.out.println("size " + size);
+        for (int i = 0 ; i < size; i++) {
+            for (int j = 0; j < values[i].size(); j++) {
+                System.out.print(values[i].getByIndex(j) + " ");
+            }
+            System.out.println( );
+        }
+    }
+
     public static void main(String[] args) {
         IntMap intMap = IntMap.allocate();
-
         intMap.add(1, 2);
-        System.out.println(intMap.toString());
-
         intMap.add(1, 3);
-        System.out.println(intMap.toString());
+        intMap.add(2, 2);
+        intMap.add(2, 6);
+        intMap.print();
 
-        intMap.add(0, 2);
-        System.out.println(intMap.toString());
+
+        IntMap intMap1 = IntMap.allocate();
+        intMap1.add(1, 4);
+        intMap1.add(1, 5);
+        intMap1.add(2, 7);
+        intMap1.add(2, 9);
+        intMap1.print();
+
+        intMap.merge(intMap1).print();
     }
 }

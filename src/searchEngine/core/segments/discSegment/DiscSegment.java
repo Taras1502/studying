@@ -54,6 +54,7 @@ public class DiscSegment implements Serializable {
     public static DiscSegment asBuffer(String workingDir) {
         DiscSegment discSegment = new DiscSegment(workingDir);
         discSegment.segmentPath = String.format(DISC_SEGMENT_PATH, workingDir, String.valueOf(System.currentTimeMillis())) + ".part";
+        discSegment.createBuffer();
         return discSegment;
     }
 
@@ -91,6 +92,12 @@ public class DiscSegment implements Serializable {
             }
             return PostList.fromBytes(postList, id);
         } catch (IOException e) {
+            try {
+                System.out.println("FILE " + index.length() + " " + index.getFilePointer());
+                System.out.println("DIFF  " + id + " " + pos);
+            } catch (IOException e1) {
+                e1.printStackTrace();
+            }
             e.printStackTrace();
         }
         return null;
@@ -124,7 +131,7 @@ public class DiscSegment implements Serializable {
             BufferedOutputStream bufferOS = new BufferedOutputStream(new FileOutputStream(segmentPath));
             buffer = new DataOutputStream(bufferOS);
             bufferSize = 0;
-        } catch (FileNotFoundException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
@@ -147,14 +154,13 @@ public class DiscSegment implements Serializable {
 
     public int appendBuffer(PostList postList) {
         try {
-            System.out.println("appending");
-            System.out.println("POST " + postList.toString());
+            System.out.println("append");
             byte[] bytes = postList.toBytes();
             buffer.writeInt(bytes.length); // postList size (int)
             buffer.write(bytes); // postList bytes
             bufferSize += bytes.length + INT_SIZE;
             return bufferSize;
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
             return -1;
         }

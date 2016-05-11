@@ -4,7 +4,6 @@ import searchEngine.core.documentStore.DocumentStore;
 
 import java.io.Serializable;
 import java.nio.ByteBuffer;
-import java.util.*;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
@@ -33,14 +32,15 @@ public class PostList implements Serializable {
 
         PostList postList = new PostList(segId);
         while (byteBuffer.hasRemaining()) {
+            int lim = 0;
             int docId = byteBuffer.getInt();
             int positionsNum = byteBuffer.getInt();
             IntBuffer positions = IntBuffer.allocate(positionsNum);
             for (int i = 0; i < positionsNum; i++) {
                 int p = byteBuffer.getInt();
-//                System.out.println("pos " + p);
                 positions.add(p);
             }
+            postList.size += 4 + 4 + positionsNum * 4;
 //            System.out.println("fromBytes: " + docId + " " + positions.toString());
             postList.posts.add(docId, positions);
         }
@@ -93,22 +93,35 @@ public class PostList implements Serializable {
         }
     }
 
+    public void addPosts(IntMap posts) {
+        this.posts = posts;
+        System.out.println(posts.size() + " " + posts.toString());
+        for (int i = 0; i < posts.size(); i++) {
+            size += 4 + 4 * posts.getByIndex(i).size();
+        }
+    }
+
     public byte[] toBytes() {
         ByteBuffer byteBuffer = ByteBuffer.allocate(size);
         try {
             writeLock.lock();
+            int written = 0;
             for (int i = 0; i < posts.size(); i++) {
-                IntBuffer post = posts.get(i);
+                IntBuffer post = posts.getByIndex(i);
                 if (post != null) {
-                    int di = post.get(0);
+                    int di = post.getByIndex(0);
                     byteBuffer.putInt(di); // docId
                     byteBuffer.putInt(post.size() - 1); // pos num
+//                    System.out.println(post.size() - 1 + " " + byteBuffer.limit());
                     for (int j = 1; j < post.size(); j++) {
-                        byteBuffer.putInt(post.get(j)); // positions
+                        byteBuffer.putInt(post.getByIndex(j)); // positions
                     }
+                    written += 4 + 4 + 4 * (post.size() - 1);
                 }
             }
 
+        } catch (Exception e) {
+            e.printStackTrace();
         } finally {
             writeLock.unlock();
         }
@@ -122,7 +135,8 @@ public class PostList implements Serializable {
             for (int i = 0; i < posts.size(); i++) {
                 IntBuffer post = posts.get(i);
                 if (post != null) {
-                    if (!documentStore.getSegmentId(post.get(0)).contains(segId)){
+                    IntBuffer segIds = documentStore.getSegmentId(post.getByIndex(0));
+                    if (segIds != null && !segIds.contains(segId)){
                         posts.remove(i);
                     }
                 }
@@ -135,22 +149,21 @@ public class PostList implements Serializable {
     public PostList mergePostList(PostList that, DocumentStore documentStore, int newSegId) {
         synch(documentStore);
         that.synch(documentStore);
-
         PostList res = new PostList(newSegId);
         try {
             readLock.lock();
 
-            res.posts = posts.merge(that.posts);
+            res.addPosts(posts.merge(that.posts));
+        System.out.println("merging ");
+            return res;
 
         } finally {
             readLock.unlock();
         }
-
-        return null;
     }
 
     @Override
     public String toString() {
-        return segId + ": " + posts.toString();
+        return posts.size() + " " + size + ": " + posts.toString();
     }
 }

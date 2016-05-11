@@ -145,9 +145,9 @@ public class DocumentStore {
             docs = hashes.get(fileHash);
             if (docs != null) {
                 for (int i = 0; i < docs.size(); i++) {
-                    String p = getDocPath(docs.get(i));
+                    String p = getDocPath(docs.getByIndex(i));
                     if (docPath.equalsIgnoreCase(p)) {
-                        return docs.get(i);
+                        return docs.getByIndex(i);
                     }
                 }
             }

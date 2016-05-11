@@ -1,6 +1,5 @@
 package searchEngine.core.index;
 
-import searchEngine.core.IntBuffer;
 import searchEngine.core.Logger;
 import searchEngine.core.PostList;
 import searchEngine.core.documentStore.DocumentStore;
@@ -131,7 +130,6 @@ public class Index {
         try {
             dicReadLock.lock();
             tokenData = dictionary.get(token);
-            System.out.println(dictionary.toString());
         } finally {
             dicReadLock.unlock();
         }
@@ -143,9 +141,9 @@ public class Index {
                 int segIdIndex = 0;
                 int posIndex = 1;
                 while(posIndex < tokenData.size()) {
-                    DiscSegment discSegment = discSegments.get(tokenData.get(segIdIndex));
+                    DiscSegment discSegment = discSegments.get(tokenData.getByIndex(segIdIndex));
                     if (discSegment != null && discSegment.isSearchable()) {
-                        PostList postList = discSegment.getPostList(tokenData.get(posIndex));
+                        PostList postList = discSegment.getPostList(tokenData.getByIndex(posIndex));
                         postLists.add(postList);
                     }
                     segIdIndex += 2;
@@ -274,38 +272,42 @@ public class Index {
         try {
             dicReadLock.lock();
 
-            System.out.println(dictionary.entrySet().size());
-
-            for (Map.Entry<String, TokenData> entry : dictionary.entrySet()) {
-                System.out.println(entry.getValue().toString());
+            Set<Map.Entry<String, TokenData>> set = dictionary.entrySet();
+            for (Map.Entry<String, TokenData> entry : set) {
+                System.out.println(entry.getKey());
+                if (entry.getValue() == null) {
+                    continue;
+                }
                 // disc segments merge logic
                 res = null;
                 TokenData tokenData = entry.getValue();
                 int pos1 = tokenData.getPosition(seg1.getId());
                 int pos2 = tokenData.getPosition(seg2.getId());
-                System.out.println(pos1 + " " + pos2);
+                System.out.println( "pos " + pos1 + " " + pos2);
                 if (pos1 != -1) {
                     postList1 = seg1.getPostList(pos1);
+                    System.out.println("p1 " + postList1.toString());
                     if (pos2 != -1) {
                         postList2 = seg2.getPostList(pos2);
+                        System.out.println("in p2 " + postList2.toString());
                         res = postList1.mergePostList(postList2, documentStore, seg1.getId());
                     } else {
                         postList1.synch(documentStore);
                         res = postList1;
                     }
                 } else if (pos2 != -1) {
+                    System.out.println("in p22");
                     res = seg2.getPostList(pos2);
+                    System.out.println(res.toString() + res.getSize());
                     res.synch(documentStore);
                 } else {
-                    System.out.println("jkjjjjjj");
                     continue;
                 }
-
-                System.out.println(res == null);
+                System.out.println("synched " + res.toString() + " " + res.getSize());
                 // new post list write logic
                 int pos = discSegment.appendBuffer(res);
                 System.out.println("p" + pos);
-                System.out.println("discsegs " + discSegments.toString());
+//                System.out.println("discsegs " + discSegments.toString());
                 try {
 //                    dicWriteLock.lock();
                     updated = true;
@@ -316,9 +318,12 @@ public class Index {
 //                    dicWriteLock.unlock();
                 }
             }
+        } catch (Exception e) {
+            e.printStackTrace();
         } finally {
             dicReadLock.unlock();
         }
+        System.out.println("FINISHED MERGING SEGMENTS");
         seg1.removeDiscFile();
         seg2.removeDiscFile();
 
