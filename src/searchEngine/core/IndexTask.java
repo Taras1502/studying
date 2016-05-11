@@ -39,13 +39,15 @@ public class IndexTask implements Runnable {
             MemorySegment memorySegment = getMemorySegment();
 
             int docId = documentStore.registerDocument(filePath, memorySegment.getId());
+            String left = "";
             while(br.read(buff) != -1) {
                 sb = new StringBuilder(512);
-                sb.append(buff);
+                sb.append(left).append(buff);
 
                 StringTokenizer stringTokenizer = new StringTokenizer(sb.toString(), TOKEN_SPLITTERS);
+                String token = "";
                 while (stringTokenizer.hasMoreTokens()) {
-                    String token = stringTokenizer.nextToken().toLowerCase();
+                    token = stringTokenizer.nextToken().toLowerCase();
                     if (TokenFilter.needToIndex(token)) {
                         while (!memorySegment.addPostList(token, docId, pos)) {
                             memorySegment = getMemorySegment();
@@ -56,6 +58,7 @@ public class IndexTask implements Runnable {
                         pos++;
                     }
                 }
+                left = token;
             }
 
 

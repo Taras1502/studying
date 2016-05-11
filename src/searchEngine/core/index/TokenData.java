@@ -28,20 +28,33 @@ public class TokenData extends IntBuffer {
     }
 
     public void setPosition(int segmentId, int pos) {
-        for (int i = 0; i < size; i+=2) {
-            if (buff[i] == segmentId) {
-                buff[i + 1] = pos;
-            }
+        int index = getIndexForSegId(segmentId);
+        if (index == -1) {
+//            System.out.println("Set pos");
+            append(segmentId, pos);
+        } else {
+//            System.out.println("Reset Pos");
+            buff[index + 1] = pos;
         }
     }
 
+    public int getIndexForSegId(int segmentId) {
+        for (int i = 0; i < size; i += 2) {
+            if (buff[i] == segmentId) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     public void removeDataForSeg(int segmentId) {
-        for (int i = 0; i < size && buff[i] <= segmentId; i+=2) {
+        for (int i = 0; i < size; i+=2) {
             if (buff[i] == segmentId) {
                 for (int j = i; j < size - 2; j++) {
                     buff[j] = buff[j + 2];
                 }
                 size -= 2;
+                break;
             }
         }
     }

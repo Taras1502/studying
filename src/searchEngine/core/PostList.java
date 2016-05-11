@@ -95,7 +95,6 @@ public class PostList implements Serializable {
 
     public void addPosts(IntMap posts) {
         this.posts = posts;
-        System.out.println(posts.size() + " " + posts.toString());
         for (int i = 0; i < posts.size(); i++) {
             size += 4 + 4 * posts.getByIndex(i).size();
         }
@@ -154,7 +153,7 @@ public class PostList implements Serializable {
             readLock.lock();
 
             res.addPosts(posts.merge(that.posts));
-        System.out.println("merging ");
+//        System.out.println("merging ");
             return res;
 
         } finally {

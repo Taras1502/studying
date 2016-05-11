@@ -127,8 +127,6 @@ public class IntMap implements Serializable {
                 res.addEntry(that.values[thatPos++]);
             } else {
                 if (values[thisPos].getByIndex(1) < that.values[thatPos].getByIndex(1)) {
-                    System.out.println(values[thisPos].toString());
-                    System.out.println(that.values[thatPos].toString());
                     values[thisPos].append(that.values[thatPos].toArr(), 1, that.values[thatPos].size);
                     res.addEntry(values[thisPos]);
                 } else if (values[thisPos].getByIndex(1) > that.values[thatPos].getByIndex(1)) {

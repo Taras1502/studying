@@ -14,10 +14,10 @@ import java.util.concurrent.*;
 public class IndexTest {
     public static void main(String[] args) {
         ExecutorService executorService = Executors.newFixedThreadPool(2);
-        File testDir = new File("D:/docs1");
+        File testDir = new File("/Users/macbookpro/Desktop/test");
 
 
-        Index index = Index.create("D:/workingDir");
+        Index index = Index.create("/Users/macbookpro/Desktop/workingDir");
         DocumentStore documentStore = index.getDocumentStore();
 
 
@@ -25,6 +25,7 @@ public class IndexTest {
             @Override
             public void run() {
                 for (File f: testDir.listFiles()) {
+                    if (f.getPath().endsWith("DS_Store")) continue;
                     Future<MemorySegment> futureSegment = index.getMemorySegment(f.getPath());
                     try {
                         MemorySegment memorySegment = futureSegment.get();

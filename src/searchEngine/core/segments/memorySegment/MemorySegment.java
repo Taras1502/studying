@@ -19,7 +19,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  */
 
 public class MemorySegment implements Serializable {
-    private static final int MAX_SIZE = 1024000;
+    private static final int MAX_SIZE = 7024000;
     private final String MEMORY_SEGMENT_PATH = "%s/%s.mem";
     private static final int INT_SIZE = 4;
 
@@ -137,6 +137,7 @@ public class MemorySegment implements Serializable {
             }
             postList.addPost(docId, pos);
             size += INT_SIZE; // pos
+//            System.out.println("Added pos " + pos + " for token " + token + " in doc " + docId);
             return true;
         } finally {
             writeLock.unlock();
@@ -198,11 +199,10 @@ public class MemorySegment implements Serializable {
                 indDOS.write(postList); // postList bytes
 
                 index.addToken(e.getKey(), discSegment, pos);
-                if (pos == 0) System.out.println("ZEROOOOOOOOOOOOOOOOOOOOOO");
+//                System.out.println("writing postList to disc for token " + e.getKey() + " to pos " + pos);
                 pos = pos + postList.length + INT_SIZE;
             }
             indDOS.flush();
-            System.out.println("DIFF  " + id + " " + size + " " + pos);
 
             segmentDictionary.clear();
             discSegment.setSearchable(true);

@@ -15,4 +15,8 @@ public class TokenFilter {
     public static boolean needToIndex(String token) {
         return !STOP_WORDS.contains(token);
     }
+
+    public static void main(String[] args) {
+        System.out.println(STOP_WORDS.contains("retrieve"));
+    }
 }
