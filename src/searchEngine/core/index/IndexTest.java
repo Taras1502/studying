@@ -1,6 +1,8 @@
 package searchEngine.core.index;
 
+import com.sun.corba.se.impl.oa.toa.TOA;
 import searchEngine.core.IndexTask;
+import searchEngine.core.PostList;
 import searchEngine.core.documentStore.DocumentStore;
 import searchEngine.core.segments.memorySegment.MemorySegment;
 
@@ -14,7 +16,7 @@ import java.util.concurrent.*;
 public class IndexTest {
     public static void main(String[] args) {
         ExecutorService executorService = Executors.newFixedThreadPool(2);
-        File testDir = new File("/Users/macbookpro/Desktop/test");
+        File testDir = new File("/Users/macbookpro/Desktop/test1");
 
 
         Index index = Index.create("/Users/macbookpro/Desktop/workingDir");
@@ -44,9 +46,24 @@ public class IndexTest {
             public void run() {
                 Scanner in = new Scanner(System.in);
 
+                String phrase = "";
                 while (in.hasNext()) {
                     String token = in.next();
+                    if (token.startsWith("\"")) {
+                        phrase = token;
+                        System.out.println("Start of phrase found " + phrase);
+                    } else if (token.endsWith("\"")) {
+                        System.out.println("END of phrase found " + token.replace("\"", ""));
+                        PostList p1 = index.getPostList(phrase.replace("\"", ""));
+                        PostList p2 = index.getPostList(token.replace("\"", ""));
+                        phrase += token;
+                        System.out.println(phrase +
+                                "RESULT FOR PHRASE " +
+                                phrase +
+                                p1.positionalAnd(p2).toString());
+                    }
                     index.getPostList(token);
+
                 }
             }
         };

@@ -110,7 +110,7 @@ public class Index {
     public PostList getPostList(String token) {
         long start = System.currentTimeMillis();
         // getting post lists from memory segments
-        List<PostList> postLists = new ArrayList<>();
+        PostList res = new PostList(0);
         try {
             memSegReadLock.lock();
             for (Map.Entry<Integer, MemorySegment> entry: memorySegments.entrySet()) {
@@ -118,7 +118,11 @@ public class Index {
                 if (memorySegment.isSearchable()) {
                     PostList p = memorySegment.getPostList(token);
                     if (p != null) {
-                        postLists.add(p);
+                        if (res == null) {
+                            res = p;
+                        } else {
+                            res = res.mergePostList(p, documentStore, res.getSegmentId());
+                        }
                     }
                 }
             }
@@ -144,8 +148,15 @@ public class Index {
                 while(posIndex < tokenData.size()) {
                     DiscSegment discSegment = discSegments.get(tokenData.getByIndex(segIdIndex));
                     if (discSegment != null && discSegment.isSearchable()) {
-                        PostList postList = discSegment.getPostList(tokenData.getByIndex(posIndex));
-                        postLists.add(postList);
+                        PostList p = discSegment.getPostList(tokenData.getByIndex(posIndex));
+
+                        if (p != null) {
+                            if (res == null) {
+                                res = p;
+                            } else {
+                                res = res.mergePostList(p, documentStore, res.getSegmentId());
+                            }
+                        }
                     }
                     segIdIndex += 2;
                     posIndex += 2;
@@ -154,11 +165,12 @@ public class Index {
         } finally {
             discSegReadLock.unlock();
         }
-        System.out.println("res " + postLists.toString());
+        System.out.println("res " + res.toString());
 
-        postLists.clear();
+
+
         // TODO: implement an efficient mechanism of merging multiple post lists
-        return null;
+        return res;
     }
 
     public Future<MemorySegment> getMemorySegment(String filePath) {
@@ -272,6 +284,10 @@ public class Index {
         PostList res;
         try {
             dicReadLock.lock();
+            if (!seg1.canMerge() || !seg2.canMerge()) {
+                Logger.error(getClass(), "Could not merge discs with ids " + seg1.getId() + " " + seg2.getId());
+                return;
+            }
 
             Set<Map.Entry<String, TokenData>> set = dictionary.entrySet();
             for (Map.Entry<String, TokenData> entry : set) {
@@ -340,7 +356,7 @@ public class Index {
         } finally {
             dicReadLock.unlock();
         }
-//        System.out.println("FINISHED MERGING SEGMENTS");
+        Logger.info(getClass(), "FINISHED merging segments with ids " + seg1.getId() + " " + seg2.getId());
 
 
         // new disc segment write logic

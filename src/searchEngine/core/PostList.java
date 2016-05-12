@@ -161,6 +161,13 @@ public class PostList implements Serializable {
         }
     }
 
+    public PostList positionalAnd(PostList that) {
+        System.out.println("here");
+        PostList res = new PostList(segId);
+        res.addPosts(posts.positionalAnd(that.posts));
+        return res;
+    }
+
     @Override
     public String toString() {
         return posts.size() + " " + size + ": " + posts.toString();

@@ -156,16 +156,29 @@ public class DiscSegment implements Serializable {
 
     public int appendBuffer(PostList postList) {
         try {
+            synchronized (fileLock) {
 //            System.out.println("append");
-            int pos = bufferSize;
-            byte[] bytes = postList.toBytes();
-            buffer.writeInt(bytes.length); // postList size (int)
-            buffer.write(bytes); // postList bytes
-            bufferSize += bytes.length + INT_SIZE;
-            return pos;
+                int pos = bufferSize;
+                byte[] bytes = postList.toBytes();
+                buffer.writeInt(bytes.length); // postList size (int)
+                buffer.write(bytes); // postList bytes
+                bufferSize += bytes.length + INT_SIZE;
+                return pos;
+            }
         } catch (Exception e) {
             e.printStackTrace();
             return -1;
+        }
+    }
+
+    public boolean canMerge() {
+        synchronized (fileLock) {
+            try {
+                return index.length() > 0 && inMerge;
+            } catch (IOException e) {
+                e.printStackTrace();
+                return false;
+            }
         }
     }
 }

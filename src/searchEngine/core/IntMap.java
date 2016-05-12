@@ -164,6 +164,35 @@ public class IntMap implements Serializable {
         values = temp;
     }
 
+    public IntMap positionalAnd(IntMap that) {
+        IntMap res = IntMap.allocate();
+
+        int thisPos = 0;
+        int thatPos = 0;
+
+        int thisDocId;
+        int thatDocId;
+        while(thisPos < size && thatPos < that.size) {
+            thisDocId = values[thisPos].getByIndex(0);
+            thatDocId = that.values[thatPos].getByIndex(0);
+
+            if (thisDocId < thatDocId) {
+                thisPos++;
+            } else if (thisDocId > thatDocId) {
+                thatPos++;
+            } else {
+                IntBuffer postsMerge = values[thisPos].positionalAnd(that.values[thatPos]);
+                if (postsMerge != null) {
+                    System.out.println("found pos for posAnd");
+                    res.addEntry(postsMerge);
+                }
+                thisPos++;
+                thatPos++;
+            }
+        }
+        return res;
+    }
+
 
     @Override
     public String toString() {
@@ -196,6 +225,6 @@ public class IntMap implements Serializable {
         intMap1.add(2, 9);
         intMap1.print();
 
-        intMap.merge(intMap1).print();
+        intMap.positionalAnd(intMap1).print();
     }
 }

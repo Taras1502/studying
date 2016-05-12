@@ -104,6 +104,37 @@ public class IntBuffer implements Serializable {
         buff = temp;
     }
 
+
+    public IntBuffer positionalAnd(IntBuffer that) {
+        IntBuffer res = IntBuffer.allocate();
+        res.append(buff[0]); // adding doc id
+
+        int thisPos = 1;
+        int thatPos = 1;
+
+        int thisTokenPos;
+        int thatTokenPos;
+
+        while(thisPos < size && thatPos < that.size) {
+            thisTokenPos = buff[thisPos];
+            thatTokenPos = that.buff[thatPos];
+
+            if (thisTokenPos < thatTokenPos) {
+                thisPos++;
+                if (thatTokenPos - thisTokenPos == 1) {
+                    res.append(thisTokenPos);
+                    thatPos++;
+                }
+            } else if (thisTokenPos > thatTokenPos) {
+                thatPos++;
+            }
+        }
+        if (res.size() > 1) {
+            return res;
+        } else {
+            return null;
+        }
+    }
     @Override
     public String toString() {
         return Arrays.toString(buff);
