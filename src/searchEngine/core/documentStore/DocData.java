@@ -8,6 +8,7 @@ import searchEngine.core.IntBuffer;
 public class DocData {
     private IntBuffer segmentId;
     private long position;
+    private int tokenNum;
 
     public DocData() {
         segmentId = IntBuffer.allocate();
@@ -37,6 +38,14 @@ public class DocData {
 
     public void setPosition(long position) {
         this.position = position;
+    }
+
+    public int getTokenNum() {
+        return tokenNum;
+    }
+
+    public void setTokenNum(int tokenNum) {
+        this.tokenNum = tokenNum;
     }
 
 }

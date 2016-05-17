@@ -47,6 +47,10 @@ public class PostList implements Serializable {
         return postList;
     }
 
+    public IntMap getPosts() {
+        return posts;
+    }
+
     public int getSegmentId() {
         try {
             readLock.lock();

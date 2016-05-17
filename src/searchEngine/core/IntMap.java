@@ -22,6 +22,10 @@ public class IntMap implements Serializable {
         size = values.length;
     }
 
+    public IntBuffer[] values() {
+        return values;
+    }
+
     public static IntMap allocate() {
         return new IntMap(DEFAULT_KEYS_START_SIZE);
     }
@@ -196,7 +200,11 @@ public class IntMap implements Serializable {
 
     @Override
     public String toString() {
-        return Arrays.toString(values);
+        StringBuffer sb = new StringBuffer();
+        sb.append("size: ")
+                .append(size)
+                .append(Arrays.toString(values));
+        return sb.toString();
     }
 
     public void print() {

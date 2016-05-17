@@ -137,7 +137,11 @@ public class IntBuffer implements Serializable {
     }
     @Override
     public String toString() {
-        return Arrays.toString(buff);
+        StringBuffer sb = new StringBuffer();
+        sb.append("size: ")
+                .append(size)
+                .append(Arrays.toString(buff));
+        return sb.toString();
     }
 
     public static void main(String[] args) {

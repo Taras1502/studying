@@ -2,6 +2,8 @@ package searchEngine.core.index;
 
 import searchEngine.core.Logger;
 import searchEngine.core.PostList;
+import searchEngine.core.PostListAnalyzer;
+import searchEngine.core.TokenFilter;
 import searchEngine.core.documentStore.DocumentStore;
 import searchEngine.core.segments.discSegment.DiscSegment;
 import searchEngine.core.segments.memorySegment.MemorySegment;
@@ -16,6 +18,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * Created by macbookpro on 5/4/16.
  */
 public class Index {
+    private static final String TOKEN_SPLITTERS = " [ .,:;\"\'{}()-+<>]+?";
+
     private static final int THREAD_NUM = 2; // TODO: need to configure dynamically
     private static final long MAX_MEM_SEGMENT_SIZE = 102400; // 1 mb
     private static final int MAX_DISC_SEG_NUM = 5; // 10 mb
@@ -26,6 +30,7 @@ public class Index {
     private final String DOC_STORE_FILE_PATH;
     private final String workingDir;
 
+    private PostListAnalyzer postListAnalyzer;
     private DocumentStore documentStore;
     private Map<String, TokenData> dictionary;
     private boolean updated;
@@ -70,6 +75,7 @@ public class Index {
         Index index = new Index(workingDir);
         index.loadData();
         index.documentStore = DocumentStore.load(index.DOC_STORE_FILE_PATH);
+        index.postListAnalyzer = new PostListAnalyzer(index.documentStore);
         for (int segId: index.memorySegments.keySet()) {
             index.lastIdTaken.set(segId); // TODO: think of better solution
         }
@@ -79,6 +85,7 @@ public class Index {
     public static Index create(String workingDir) {
         Index index = new Index(workingDir);
         index.documentStore = DocumentStore.create(index.DOC_STORE_FILE_PATH);
+        index.postListAnalyzer = new PostListAnalyzer(index.documentStore);
         index.createNewMemorySegment();
         // TODO: implement working directory clean
         return index;
@@ -107,6 +114,23 @@ public class Index {
         }
     }
 
+    public void search(String text) {
+        System.out.println(text);
+        List<PostList> res = new ArrayList<>();
+
+        StringTokenizer stringTokenizer = new StringTokenizer(text, TOKEN_SPLITTERS);
+        String token = "";
+        while (stringTokenizer.hasMoreTokens()) {
+            token = stringTokenizer.nextToken().toLowerCase();
+            if (TokenFilter.needToIndex(token)) {
+                System.out.println(token);
+                res.add(getPostList(token.toLowerCase()));
+            }
+        }
+        postListAnalyzer.rank(res);
+
+    }
+
     public PostList getPostList(String token) {
         long start = System.currentTimeMillis();
         // getting post lists from memory segments
@@ -118,11 +142,7 @@ public class Index {
                 if (memorySegment.isSearchable()) {
                     PostList p = memorySegment.getPostList(token);
                     if (p != null) {
-                        if (res == null) {
-                            res = p;
-                        } else {
-                            res = res.mergePostList(p, documentStore, res.getSegmentId());
-                        }
+                        res = res.mergePostList(p, documentStore, res.getSegmentId());
                     }
                 }
             }
@@ -142,20 +162,14 @@ public class Index {
         try {
             discSegReadLock.lock();
             if (tokenData != null) {
-//                System.out.println(tokenData.toString());
                 int segIdIndex = 0;
                 int posIndex = 1;
                 while(posIndex < tokenData.size()) {
                     DiscSegment discSegment = discSegments.get(tokenData.getByIndex(segIdIndex));
                     if (discSegment != null && discSegment.isSearchable()) {
                         PostList p = discSegment.getPostList(tokenData.getByIndex(posIndex));
-
                         if (p != null) {
-                            if (res == null) {
-                                res = p;
-                            } else {
-                                res = res.mergePostList(p, documentStore, res.getSegmentId());
-                            }
+                            res = res.mergePostList(p, documentStore, res.getSegmentId());
                         }
                     }
                     segIdIndex += 2;
@@ -166,10 +180,6 @@ public class Index {
             discSegReadLock.unlock();
         }
         System.out.println("res " + res.toString());
-
-
-
-        // TODO: implement an efficient mechanism of merging multiple post lists
         return res;
     }
 
@@ -471,4 +481,5 @@ public class Index {
             }
         }
     }
+
 }

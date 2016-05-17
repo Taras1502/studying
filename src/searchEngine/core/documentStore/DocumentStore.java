@@ -137,7 +137,7 @@ public class DocumentStore {
         }
     }
 
-    private int contains(String docPath) {
+    public int contains(String docPath) {
         int fileHash = docPath.hashCode();
         IntBuffer docs;
         try {
@@ -181,6 +181,40 @@ public class DocumentStore {
         } finally {
             writeLock.unlock();
         }
+    }
+
+    public void markFinish(int docId, int tokenNum) {
+        try {
+            writeLock.lock();
+            DocData docData = documents.get(docId);
+            if (docData != null) {
+                docData.setTokenNum(tokenNum);
+            }
+        } finally {
+            writeLock.unlock();
+        }
+    }
+
+    public int getDocNum() {
+        try {
+            readLock.lock();
+            return documents.size();
+        } finally {
+            readLock.unlock();
+        }
+    }
+
+    public int getTokenNum(int docId) {
+        try {
+            readLock.lock();
+            DocData docData = documents.get(docId);
+            if (docData != null) {
+                return docData.getTokenNum();
+            }
+        } finally {
+            readLock.unlock();
+        }
+        return -1;
     }
 
     /*

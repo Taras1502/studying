@@ -47,22 +47,24 @@ public class IndexTest {
                 Scanner in = new Scanner(System.in);
 
                 String phrase = "";
-                while (in.hasNext()) {
-                    String token = in.next();
-                    if (token.startsWith("\"")) {
-                        phrase = token;
-                        System.out.println("Start of phrase found " + phrase);
-                    } else if (token.endsWith("\"")) {
-                        System.out.println("END of phrase found " + token.replace("\"", ""));
-                        PostList p1 = index.getPostList(phrase.replace("\"", ""));
-                        PostList p2 = index.getPostList(token.replace("\"", ""));
-                        phrase += token;
-                        System.out.println(phrase +
-                                "RESULT FOR PHRASE " +
-                                phrase +
-                                p1.positionalAnd(p2).toString());
-                    }
-                    index.getPostList(token);
+                while (in.hasNextLine()) {
+                    index.search(in.nextLine());
+
+//                    String token = in.next();
+//                    if (token.startsWith("\"")) {
+//                        phrase = token;
+//                        System.out.println("Start of phrase found " + phrase);
+//                    } else if (token.endsWith("\"")) {
+//                        System.out.println("END of phrase found " + token.replace("\"", ""));
+//                        PostList p1 = index.getPostList(phrase.replace("\"", ""));
+//                        PostList p2 = index.getPostList(token.replace("\"", ""));
+//                        phrase += token;
+//                        System.out.println(phrase +
+//                                "RESULT FOR PHRASE " +
+//                                phrase +
+//                                p1.positionalAnd(p2).toString());
+//                    }
+//                    index.search(token);
 
                 }
             }

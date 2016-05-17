@@ -60,6 +60,7 @@ public class IndexTask implements Runnable {
                 }
                 left = token;
             }
+            documentStore.markFinish(docId, pos);
 
 
 //            while((l = br.readLine()) != null) {
