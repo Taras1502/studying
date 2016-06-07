@@ -1,7 +1,4 @@
 package searchEngine.core;
-
-import searchEngine.core.documentStore.*;
-import searchEngine.core.documentStore.DocumentStore;
 import searchEngine.core.index.Index;
 
 import java.io.File;
@@ -9,7 +6,6 @@ import java.io.FileFilter;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -20,7 +16,7 @@ public class Crawler {
     private static final Set<String> SUPPORTED_EXTENSIONS = new HashSet<>(Arrays.asList("", "txt"));
     private searchEngine.core.documentStore.DocumentStore documentStore;
     private Index index;
-    private Set<String> rootFolders;
+    private Set<File> paths;
     private volatile long lastCrawled;
     private volatile boolean stop;
 
@@ -30,7 +26,7 @@ public class Crawler {
         this.index = index;
         documentStore = index.getDocumentStore();
 
-        rootFolders = Collections.synchronizedSet(new HashSet<String>()); ;
+        paths = Collections.synchronizedSet(new HashSet<File>()); ;
         lastCrawled = 0;
         stop = false;
     }
@@ -39,26 +35,44 @@ public class Crawler {
         stop = true;
     }
 
-    public void addRootFolder(String folderPath) {
-        rootFolders.add(folderPath);
+    public void addPath(String path) {
+        try {
+            File f = new File(path);
+            if (f.exists()) {
+                paths.add(f);
+            }
+        } catch (Exception e) {
+            Logger.error(getClass(), "File with path " + path + "does not exist.");
+        }
     }
 
-    public void removeRootFolder(String path) {
-        rootFolders.remove(path);
+    public void removePath(String path) {
+         try {
+             File f = new File(path);
+             paths.remove(f);
+         } catch (Exception e) {
+             Logger.error(getClass(), "File with path " + path + "does not exist.");
+         }
     }
 
-    public void crawlRootFolders() {
-        Iterator<String> it = rootFolders.iterator();
+    public void crawl() {
+        Iterator<File> it = paths.iterator();
         while (it.hasNext() && !stop) {
-            String rootFolder = it.next();
-            if (Files.isDirectory(Paths.get(rootFolder))) {
-                crawlFolder(rootFolder);
+            File file = it.next();
+            if (file.isDirectory()) {
+                crawlFolder(file);
+            } else {
+                if (candidateToIndex(file)) {
+                    IndexTask t1 = new IndexTask(index, documentStore, file.getPath());
+                    executorService.submit(t1);
+                }
             }
         }
+
         lastCrawled = new Date().getTime();
     }
 
-    private void crawlFolder(String folder) {
+    private void crawlFolder(File folder) {
         File[] files = lastModified(folder);
         for (File f: files) {
             IndexTask t1 = new IndexTask(index, documentStore, f.getPath());
@@ -67,31 +81,34 @@ public class Crawler {
 
         File[] subDirs = getSubDirs(folder);
         for (File subDir: subDirs) {
-            crawlFolder(subDir.getPath());
+            crawlFolder(subDir);
         }
     }
 
-    private File[] lastModified(String dir) {
-        File fl = new File(dir);
-        File[] files = fl.listFiles(new FileFilter() {
+    private File[] lastModified(File dir) {
+        File[] files = dir.listFiles(new FileFilter() {
             public boolean accept(File file) {
-                String filePath = file.getPath();
-                String ext = "";
-                int i = filePath.lastIndexOf('.');
-                if (i > 0) {
-                    ext = filePath.substring(i + 1);
-                }
-                return file.isFile() && SUPPORTED_EXTENSIONS.contains(ext) &&
-                        (documentStore.contains(file.getPath()) == -1 || file.lastModified() > lastCrawled);
+                return candidateToIndex(file);
             }
         });
 
         return files;
     }
 
-    private File[] getSubDirs(String dir) {
-        File fl = new File(dir);
-        File[] subDirs = fl.listFiles(new FileFilter() {
+    private boolean candidateToIndex(File file) {
+        String filePath = file.getPath();
+        String ext = "";
+        int i = filePath.lastIndexOf('.');
+
+        if (i > 0) {
+            ext = filePath.substring(i + 1);
+        }
+        return file.isFile() && SUPPORTED_EXTENSIONS.contains(ext) &&
+                (documentStore.contains(file.getPath()) == -1 || file.lastModified() > lastCrawled);
+    }
+
+    private File[] getSubDirs(File dir) {
+        File[] subDirs = dir.listFiles(new FileFilter() {
             public boolean accept(File file) {
                 return file.isDirectory();
             }

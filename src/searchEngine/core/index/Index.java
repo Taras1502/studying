@@ -123,7 +123,7 @@ public class Index {
         while (stringTokenizer.hasMoreTokens()) {
             token = stringTokenizer.nextToken().toLowerCase();
             if (TokenFilter.needToIndex(token)) {
-                System.out.println(token);
+//                System.out.println(token);
                 res.add(getPostList(token.toLowerCase()));
             }
         }
@@ -142,6 +142,7 @@ public class Index {
                 if (memorySegment.isSearchable()) {
                     PostList p = memorySegment.getPostList(token);
                     if (p != null) {
+                        System.out.println(p.toString());
                         res = res.mergePostList(p, documentStore, res.getSegmentId());
                     }
                 }

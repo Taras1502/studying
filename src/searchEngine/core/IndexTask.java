@@ -38,7 +38,12 @@ public class IndexTask implements Runnable {
             StringBuilder sb;
             MemorySegment memorySegment = getMemorySegment();
 
-            int docId = documentStore.registerDocument(filePath, memorySegment.getId());
+            int docId = documentStore.contains(filePath);
+            if (docId != -1) {
+                documentStore.resetSegmentId(docId, memorySegment.getId());
+            } else {
+                docId = documentStore.registerDocument(filePath, memorySegment.getId());
+            }
             String left = "";
             while(br.read(buff) != -1) {
                 sb = new StringBuilder(512);

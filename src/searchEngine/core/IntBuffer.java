@@ -59,6 +59,8 @@ public class IntBuffer implements Serializable {
         return -1;
     }
 
+
+
     public boolean contains(int elem) {
         return getIndex(elem) != -1;
     }
@@ -81,7 +83,7 @@ public class IntBuffer implements Serializable {
             size--;
 
             if (size < buff.length / 2) {
-                changeCapacity((buff.length / 4) * 3 + 1);
+                changeCapacity(buff.length / 4 * 3 + 1);
             }
         }
     }
@@ -100,7 +102,7 @@ public class IntBuffer implements Serializable {
 
     private void changeCapacity(int newCapacity) {
         int[] temp = new int[newCapacity];
-        System.arraycopy(buff, 0, temp, 0, buff.length);
+        System.arraycopy(buff, 0, temp, 0, size);
         buff = temp;
     }
 

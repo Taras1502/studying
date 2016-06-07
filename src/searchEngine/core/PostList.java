@@ -32,7 +32,6 @@ public class PostList implements Serializable {
 
         PostList postList = new PostList(segId);
         while (byteBuffer.hasRemaining()) {
-            int lim = 0;
             int docId = byteBuffer.getInt();
             int positionsNum = byteBuffer.getInt();
             IntBuffer positions = IntBuffer.allocate(positionsNum);

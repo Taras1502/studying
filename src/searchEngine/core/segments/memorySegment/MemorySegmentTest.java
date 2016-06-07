@@ -1,6 +1,5 @@
 package searchEngine.core.segments.memorySegment;
 
-import searchEngine.core.dictionary.Dictionary;
 
 import java.util.Random;
 

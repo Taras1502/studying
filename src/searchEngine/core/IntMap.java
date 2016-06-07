@@ -137,7 +137,7 @@ public class IntMap implements Serializable {
                     that.values[thatPos].append(values[thisPos].toArr(), 1, values[thisPos].size);
                     res.addEntry(that.values[thatPos]);
                 } else {
-                    System.out.println("WAS NOT EXPECTING");
+                    System.out.println(values[thisPos].getByIndex(0));
                 }
                 thisPos++;
                 thatPos++;
